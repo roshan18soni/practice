@@ -595,7 +595,3 @@ def mergeSortedArraysWithoutExtraSpae(arr1, arr2, n, m):
 
     arr1.sort()
     arr2.sort()
-
-arr1 = [1, 5, 9, 10, 15, 20]
-arr2=[2, 3, 8, 13]
-mergeSortedArraysWithoutExtraSpae(arr1, arr2, len(arr1), len(arr2))
