@@ -176,3 +176,130 @@ def findSubString(string: str, pattern: str):
     else:   
         print(f'max window from {start_index} to {start_index+min_len-1}')
         return string[start_index:start_index+min_len]
+
+""" 
+Check whether two Strings are anagram of each other
+Time: O(n)
+Space: O(1)
+ """
+def isAnagram(a, b):
+ 
+    if (len(a) != len(b)):
+        return False
+ 
+    map = {}
+    for i in range(len(a)):
+        if (a[i] in map):
+            map[a[i]] += 1
+ 
+        else:
+            map[a[i]] = 1
+ 
+    for i in range(len(b)):
+        if (b[i] in map):
+            map[b[i]] -= 1
+        else:
+            return False
+ 
+    keys = map.keys()
+    for key in keys:
+        if (map[key] != 0):
+            return False
+ 
+    return True
+
+""" 
+Write your own atoi()
+Time: O(n)
+Space: O(1)
+ """
+def myAtoi(Str):
+ 
+    sign, base, i = 1, 0, 0
+ 
+    # If whitespaces then ignore.
+    while (Str[i] == ' '):
+        i += 1
+ 
+    # Sign of number
+    if (Str[i] == '-' or Str[i] == '+'):
+        sign = 1 - 2 * (Str[i] == '-')
+        i += 1
+ 
+    # Checking for valid input
+    while (i < len(Str) and
+           Str[i] >= '0' and Str[i] <= '9'):
+ 
+        # Handling overflow test case, maxsize=9223372036854775807
+        if (base > (sys.maxsize // 10) or
+            (base == (sys.maxsize // 10) and
+                (ord(Str[i]) - ord('0')) > 7)):
+            if (sign == 1):
+                return sys.maxsize
+            else:
+                return -(sys.maxsize)
+ 
+        base = 10 * base + (ord(Str[i]) - ord('0'))
+        i += 1
+ 
+    return base * sign
+
+
+""" 
+Rearrange a string so that all same characters become d distance away
+Time: O(n+mlog(Max))
+Space: O(n)
+ """
+def rearragne(string, d):
+    n= len(string)
+    freq_hash= {}
+
+    for ch in string:
+        freq_hash[ch]= freq_hash.get(ch, 0)+1
+        
+    sorted_freq_hash_keys= sorted(freq_hash, key=freq_hash.get, reverse=True)
+    
+    result= ['']*n
+
+    start_index=0
+    for ch in sorted_freq_hash_keys:
+        freq= freq_hash[ch]
+
+        for i in range(freq):
+            index= start_index+i*d
+            if index<n:
+                result[index]=ch
+            else:
+                return 'Cannot be arranged'
+        
+        start_index+=1
+        while start_index<n and result[start_index]!='':
+            start_index+=1
+
+    return ''.join(result)
+
+""" 
+Find Excel column name from a given column number
+Time: O(log26n)
+Space: O(log26n)
+ """
+def excel_column_name(column_number):
+    result = ''
+    while column_number > 0:
+        remainder = (column_number - 1) % 26
+        result = chr(65 + remainder) + result
+        column_number = (column_number - 1) // 26
+
+    return result
+
+""" 
+Using Recursion
+Time: O(log26n)
+Space: O(1)
+ """
+def excel_column_name(column_number):
+    if column_number == 0:
+        return ''
+    else:
+        remainder = (column_number - 1) % 26
+        return excel_column_name((column_number - 1) // 26) + chr(65 + remainder)
