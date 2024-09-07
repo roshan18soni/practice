@@ -107,3 +107,78 @@ def flatten(arr):
             resultArr.append(custItem)
     return resultArr 
 
+""" 
+Capitalize first: Given an array of strings, capitalize the first letter of 
+each string in the array.
+ """
+def capitalizeFirst(arr):
+    result=[]
+    if not arr:
+        return result
+        
+    result.append(arr[0].capitalize())
+    return result+capitalizeFirst(arr[1:])
+
+
+""" 
+nestedEvenSum. Return the sum of all even numbers in an object which 
+may contain nested objects.
+
+obj2 = {
+  "a": 2,
+  "b": {"b": 2, "bb": {"b": 3, "bb": {"b": 2}}},
+  "c": {"c": {"c": 2}, "cc": 'ball', "ccc": 5},
+  "d": 1,
+  "e": {"e": {"e": 2}, "ee": 'car'}
+}
+ """
+def nestedEvenSum(obj, sum=0):
+    for key in obj:
+        val= obj[key]
+        if type(val) is int:
+            if val%2==0:
+                sum+=val
+        elif type(val) is dict:
+            sum+=nestedEvenSum(val)
+            
+    return sum
+
+""" 
+capitalizeWords. Given an array of words, return a new array 
+containing each word capitalized.
+ """
+def capitalizeWords(arr):
+    result=[]
+    if not arr:
+        return result
+        
+    result.append(arr[0].upper())
+    return result+capitalizeWords(arr[1:])
+
+""" 
+stringifyNumbers which takes in an object and finds all of the values 
+which are numbers and converts them to strings
+ """
+def stringifyNumbers(obj):
+    result=obj
+    for key, val in obj.items():
+        if type(val) is int:
+            result[key]=str(val)
+        elif type(val) is dict:
+            result[key]=stringifyNumbers(val)
+            
+    return result
+
+
+""" 
+collectStrings which accepts an object and returns an array of all 
+the values in the object that have a typeof string.
+ """
+def collectStrings(obj):
+    result=[]
+    for key, val in obj.items():
+        if type(val) is str:
+            result.append(val)
+        elif type(val) is dict:
+            result+=collectStrings(val)
+    return result
