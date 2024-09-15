@@ -5,6 +5,7 @@ class TreeNode:
         self.leftChild=None
         self.rightChild=None
         self.next=None #specific to inorder successor problem
+        self.previous=None #specific to converting to doubly ll problem
 
 """ 
 Size of a tree
@@ -68,8 +69,8 @@ def areIdentical(rootNode1:TreeNode, rootNode2:TreeNode):
 Using level order traversal
 O(N)/O(N)
  """  
+from asyncore import read
 from collections import deque
-from lib2to3.pytree import Node
 
 def areIdentical(rootNode1:TreeNode, rootNode2:TreeNode):
     myQueue1= deque
@@ -594,14 +595,469 @@ def find_max_sum_pre_order(root: TreeNode):
 
     return max_sum[0], max_path
 
-root = TreeNode(1)
-root.leftChild = TreeNode(2)
-root.rightChild = TreeNode(3)
-root.leftChild.leftChild = TreeNode(7)
-root.leftChild.rightChild = TreeNode(6)
-root.rightChild.leftChild = TreeNode(5)
-root.rightChild.rightChild = TreeNode(4)
+""" 
+Check whether a given Binary Tree is Complete or not.
+A Complete Binary Tree is a binary tree where all levels are fully filled 
+except possibly for the last level, which is filled from left to right.
+O(n)/O(w)
+ """
+def is_complete_binary_tree(root: TreeNode):
+    if root is None:
+        return True
 
-max_sum, path = find_max_sum_pre_order(root)
-print(f"Maximum Sum: {max_sum}")
-print(f"Path: {path}")
+    my_queue= deque()
+    my_queue.append(root)
+    none_found=False
+
+    while my_queue:
+        node= my_queue.popleft()
+
+        if node:
+            if none_found:
+                return False
+            else:
+                my_queue.append(node.leftChild)
+                my_queue.append(node.rightChild)
+        else:
+            none_found=True
+
+    return True
+    
+""" 
+iterative approach of pre order traversal
+O(n)/O(w)
+ """    
+def iterative_pre_order_traversal(root: TreeNode):
+    if root is None:
+        return
+
+    my_stack= []
+
+    my_stack.append(root)
+
+    while my_stack:
+        node= my_stack.pop()
+        print(node.data)
+        if node.rightChild:
+            my_stack.append(node.rightChild)
+        if node.leftChild:
+            my_stack.append(node.leftChild)
+
+""" 
+iterative approach of post order traversal
+ """
+""" 
+1- Using two stacks
+O(n)/O(n)
+ """           
+def iterative_postorder_traversal_using_multiple_stacks(root:TreeNode):
+    if root is None:
+        return
+
+    # Initialize two stacks
+    stack1 = []
+    stack2 = []
+
+    # Push the root to the first stack
+    stack1.append(root)
+
+    # Process all nodes in stack1 and push them onto stack2
+    while stack1:
+        node = stack1.pop()
+        stack2.append(node)
+
+        # Push left and then right children to stack1
+        if node.leftChild:
+            stack1.append(node.leftChild)
+        if node.rightChild:
+            stack1.append(node.rightChild)
+
+    # Nodes are stored in reverse postorder in stack2
+    # Pop from stack2 to get the correct postorder traversal
+    while stack2:
+        node = stack2.pop()
+        print(node.data, end=" ")
+
+""" 
+2- Using single stacks
+O(n)/O(w)
+ """           
+def iterative_postorder_traversal_using_single_stack(root):
+    if root is None:
+        return
+
+    stack = []
+    last_visited = None
+    current = root
+
+    while stack or current:
+        if current:
+            stack.append(current)  # Traverse left subtree
+            current = current.leftChild
+        else:
+            peek_node = stack[-1]
+            # Check if right subtree exists and if it's already been visited
+            if peek_node.rightChild and last_visited != peek_node.rightChild:
+                current = peek_node.rightChild
+            else:
+                # If right subtree is None or already visited, visit the node
+                print(peek_node.data, end=" ")
+                last_visited = stack.pop()
+        
+""" 
+Reverse Level Order Traversal of a binary tree
+Visiting node from bottom to top and right to left
+O(n)/O(n)
+ """
+def reverse_level_order_traversal(root):
+    if root is None:
+        return
+
+    queue = []
+    stack = []
+    
+    # Start with the root node in the queue
+    queue.append(root)
+    
+    # Perform level-order traversal (BFS)
+    while queue:
+        # Dequeue the front node and push it onto the stack
+        node = queue.pop(0)
+        stack.append(node)
+        
+        # Enqueue right child first, then left child
+        # This ensures that left subtree nodes are processed last and
+        # therefore appear at the bottom of the stack.
+        if node.rightChild:
+            queue.append(node.rightChild)
+        if node.leftChild:
+            queue.append(node.leftChild)
+
+    # Pop nodes from the stack and print them
+    while stack:
+        node = stack.pop()
+        print(node.data, end=" ")
+
+""" 
+Convert Binary Tree to Doubly Linked List using inorder traversal
+O(n)/O(h)
+ """
+def binary_tree_to_doubly_ll(root:TreeNode):
+    if root is None:
+        return
+
+    prev_node=None
+    head=None
+
+    def convert_to_doubly_ll(node:TreeNode):
+        if node is None:
+            return
+
+        global prev_node
+        global head
+
+        convert_to_doubly_ll(node.leftChild)
+        if prev_node is None:
+            head= node
+        else:
+            prev_node.next= node
+            node.previous=prev_node
+
+        prev_node= node
+        convert_to_doubly_ll(node.rightChild)
+
+    convert_to_doubly_ll(root)
+
+""" 
+Height of tree iteratevely
+O(n)/O(w)
+ """
+def hieght_of_tree_iteratively(root: TreeNode):
+    if root is None:
+        return
+
+    height=0
+    my_queue= deque()
+    my_queue.append(root)
+    while my_queue:
+        height+=1
+        level_width= len(my_queue)
+        for _ in range(level_width):
+            node= my_queue.popleft()
+            if node.leftChild:
+                my_queue.append(node.leftChild)
+            if node.rightChild:
+                my_queue.append(node.rightChild)
+
+    return height
+
+""" 
+Left view of tree
+O(n)/O(w)
+ """
+def left_view_of_tree(root: TreeNode):
+    if root is None:
+        return
+
+    left_view_nodes=[]
+    my_queue= deque()
+    my_queue.append(root)
+    while my_queue:
+        level_width= len(my_queue)
+        for i in range(level_width):
+            node= my_queue.popleft()
+            if i==0:
+                left_view_nodes.append(node.data)
+            if node.leftChild:
+                my_queue.append(node.leftChild)
+            if node.rightChild:
+                my_queue.append(node.rightChild)
+
+    return left_view_nodes
+
+""" 
+Lowest common ancestor BT
+O(n)/O(h)
+ """
+def find_lca(root, n1, n2):
+    # Base case
+    if root is None:
+        return None
+
+    # If either n1 or n2 matches the root's data, then this node is the LCA
+    if root.data == n1 or root.data == n2:
+        return root
+
+    # Recursively search for LCA in the left and right subtrees
+    left_lca = find_lca(root.leftChild, n1, n2)
+    right_lca = find_lca(root.rightChild, n1, n2)
+
+    # If both left and right subtrees contain one of the nodes, then root is LCA
+    if left_lca and right_lca:
+        return root
+
+    # If only one of the subtrees contains both nodes, return that subtree
+    return left_lca if left_lca is not None else right_lca
+
+""" 
+Right view of tree
+O(n)/O(w)
+ """
+def left_view_of_tree(root: TreeNode):
+    if root is None:
+        return
+
+    right_view_nodes=[]
+    my_queue= deque()
+    my_queue.append(root)
+    while my_queue:
+        level_width= len(my_queue)
+        for i in range(level_width):
+            node= my_queue.popleft()
+            if i==0:
+                right_view_nodes.append(node.data)
+            if node.rightChild:
+                my_queue.append(node.rightChild)    
+            if node.leftChild:
+                my_queue.append(node.leftChild)
+            
+    return right_view_nodes
+
+""" 
+Print nodes between two given level numbers of a binary tree
+O(n)/O(h)
+ """
+def print_nodes_between_levels(root:TreeNode, low, high):
+    if root is None:
+        return
+
+    my_queue=deque()
+    my_queue.append(root)
+    current_level=0
+
+    while my_queue:
+        current_level+=1
+        if current_level>=low and current_level<=high:
+            level_length= len(my_queue)
+            for _ in range(level_length):
+                node= my_queue.popleft()
+                print(node.data)
+                if current_level<high:
+                    if node.leftChild:
+                        my_queue.append(node.leftChild)
+                    if node.rightChild:
+                        my_queue.append(node.rightChild)
+        elif current_level<low:
+            level_length= len(my_queue)
+            for _ in range(level_length):
+                node= my_queue.popleft()
+                if node.leftChild:
+                    my_queue.append(node.leftChild)
+                if node.rightChild:
+                    my_queue.append(node.rightChild)
+
+""" 
+Find minimum node in BST
+Note: inordre traversal of bst gives nodes in ascending order
+ """
+""" 
+recursive
+O(n)/O(h)
+ """
+def find_minimum_node_bst(root: TreeNode):
+    if root is None:
+        return
+
+    left_min= find_minimum_node_bst(root.leftChild)
+
+    if left_min is None:
+        return root
+""" 
+iterative
+O(n)/O(1)
+ """
+def find_minimum_node_bst_iterative(root:TreeNode):
+    current = root
+
+    # Loop to find the leftmost node
+    while current.leftChild:
+        current = current.leftChild
+
+    return current
+
+""" 
+check if binary tree is a BST
+O(n)/O(h)
+ """
+def check_if_bst(root:TreeNode, min_range, max_range):
+    if root is None:
+        return True
+
+    if min_range<root.data<max_range:
+        return True and check_if_bst(root.leftChild, min_range, root.data) and check_if_bst(root.rightChild, root.data, max_range)
+    else:
+        return False
+
+""" 
+kth smallest node BST
+O(n)/O(h)
+ """
+# Helper function to find the k-th smallest element in BST
+def kth_smallest_util(node, k, count):
+    # Base case: If the node is None, return None
+    if node is None:
+        return None
+
+    # Search in the left subtree
+    left = kth_smallest_util(node.leftChild, k, count)
+    
+    # If the left subtree has the k-th smallest, return it
+    if left is not None:
+        return left
+
+    # Increment the count of nodes visited
+    count[0] += 1
+
+    # If the current node is the k-th smallest, return its data
+    if count[0] == k:
+        return node.data
+
+    # Otherwise, search in the right subtree
+    return kth_smallest_util(node.rightChild, k, count)
+
+# Function to find the k-th smallest element in BST
+def kth_smallest(root, k):
+    # Initialize count as a list so that it can be updated in recursive calls
+    count = [0]
+    return kth_smallest_util(root, k, count)
+
+""" 
+kth largest node in BST
+ """
+""" 
+O(n)/O(h)
+ """
+# Helper function to find the k-th largest element in BST
+def kth_largest_util(node, k, count):
+    # Base case: If the node is None, return None
+    if node is None:
+        return None
+
+    # Search in the right subtree
+    right = kth_largest_util(node.rightChild, k, count)
+    
+    # If the left subtree has the k-th smallest, return it
+    if right is not None:
+        return right
+
+    # Increment the count of nodes visited
+    count[0] += 1
+
+    # If the current node is the k-th smallest, return its data
+    if count[0] == k:
+        return node.data
+
+    # Otherwise, search in the right subtree
+    return kth_largest_util(node.leftChild, k, count)
+
+# Function to find the k-th largest element in BST
+def kth_largest(root, k):
+    # Initialize count as a list so that it can be updated in recursive calls
+    count = [0]
+    return kth_largest_util(root, k, count)
+
+""" 
+kth smallest node BST O(1) space, Morris inorder traversal
+O(n)/O(1)
+ """
+def kthSmallest(root: TreeNode, k: int) -> int:
+    count = 0
+    current = root
+
+    while current is not None:
+        if current.leftChild is None:
+            # Visit this node
+            count += 1
+            if count == k:
+                return current.val
+            current = current.rightChild
+        else:
+            # Find the inorder predecessor of current
+            predecessor = current.leftChild
+            while predecessor.rightChild is not None and predecessor.rightChild != current:
+                predecessor = predecessor.rightChild
+
+            if predecessor.rightChild is None:
+                # Make current the right child of its predecessor
+                predecessor.rightChild = current
+                current = current.leftChild
+            else:
+                # Revert the changes (restore the tree structure)
+                predecessor.rightChild = None
+                count += 1
+                if count == k:
+                    return current.val
+                current = current.rightChild
+
+    # If we reach here, then k is larger than the number of nodes in the tree
+    return None
+
+# root = TreeNode(1)
+# root.leftChild = TreeNode(2)
+# root.rightChild = TreeNode(3)
+# root.leftChild.leftChild = TreeNode(7)
+# root.leftChild.rightChild = TreeNode(6)
+# root.rightChild.leftChild = TreeNode(5)
+# root.rightChild.rightChild = TreeNode(4)
+
+#bst
+root = TreeNode(20)
+root.leftChild = TreeNode(8)
+root.rightChild = TreeNode(22)
+root.leftChild.leftChild = TreeNode(4)
+root.leftChild.rightChild = TreeNode(12)
+root.rightChild.leftChild = TreeNode(21)
+root.rightChild.rightChild = TreeNode(23)
+
+s=kth_largest(root, 3)
+print(s)
