@@ -1,3 +1,4 @@
-a=3
-if 1<a>4:
-    print('yes')
+arr=[1, 2]
+
+ar= arr[0:-1] * -1
+print(ar)

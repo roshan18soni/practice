@@ -72,22 +72,39 @@ def extractNode(heap: BinaryHeap, heap_type):
 
     def heapifyTree(heap: BinaryHeap, node_index, heap_type):
         
-        left_child_index= 2*node_index+1
-        right_child_index= 2*node_index+2
-
-        if left_child_index>=heap.heapSize:
-            return
-        
         if heap_type=='min':
-            smallest_child_index= left_child_index if heap.customList[left_child_index]<heap.customList[right_child_index] else right_child_index
-            if heap.customList[node_index]>heap.customList[smallest_child_index]:
-                heap.customList[node_index], heap.customList[smallest_child_index]= heap.customList[smallest_child_index], heap.customList[node_index]
-                heapifyTree(heap, smallest_child_index, heap_type)
-        if heap_type=='max':
-            biggest_child_index= left_child_index if heap.customList[left_child_index]>heap.customList[right_child_index] else right_child_index
-            if heap.customList[node_index]<heap.customList[biggest_child_index]:
-                heap.customList[node_index], heap.customList[biggest_child_index]= heap.customList[biggest_child_index], heap.customList[node_index]
-                heapifyTree(heap, biggest_child_index, heap_type)
+            smallest= node_index
+            left_child_index= node_index*2+1
+            right_child_index= node_index*2+2
+
+            if left_child_index< heap.heapSize and heap[left_child_index]<heap[smallest]:
+                smallest= left_child_index
+            
+            if right_child_index< heap.heapSize and heap[right_child_index]<heap[smallest]:
+                smallest= right_child_index
+            
+            if smallest==node_index:
+                return
+            else:
+                heap[node_index], heap[smallest]= heap[smallest], heap[node_index]
+                heapifyTree(heap, smallest, heap_type)
+
+        elif heap_type=='max':
+            greatest= node_index
+            left_child_index= node_index*2+1
+            right_child_index= node_index*2+2
+
+            if left_child_index< heap.heapSize and heap[left_child_index]>heap[greatest]:
+                greatest= left_child_index
+            
+            if right_child_index< heap.heapSize and heap[right_child_index]>heap[greatest]:
+                greatest= right_child_index
+            
+            if greatest==node_index:
+                return
+            else:
+                heap[node_index], heap[greatest]= heap[greatest], heap[node_index]
+                heapifyTree(heap, greatest, heap_type)
 
     if heap.heapSize==0:
         return 'heap is empty'
