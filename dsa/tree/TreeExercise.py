@@ -73,8 +73,8 @@ from asyncore import read
 from collections import deque
 
 def areIdentical(rootNode1:TreeNode, rootNode2:TreeNode):
-    myQueue1= deque
-    myQueue2= deque
+    myQueue1= deque()
+    myQueue2= deque()
     if rootNode1 is None and rootNode2 is None:
         return True
     elif rootNode1 is not None and rootNode2 is not None:    
