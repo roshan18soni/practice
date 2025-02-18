@@ -2,7 +2,7 @@
 Find 2 elements with given sum
 Approach- One-pass hash table
 Notes: Previous elements get added to dict, now check whether complement for next element exists in dict or not.
-To just check whether such elements exists or not, Set in enough
+To just check whether such elements exists or not, Set is enough
 Time: O(n)
 Space: O(n)
 """
@@ -51,7 +51,6 @@ Space: O(n)
 """
 def getOddOccurrence(arr,size):
      
-    # Defining HashMap in C++
     Hash=dict()
  
     # Putting all elements into the HashMap 
@@ -167,10 +166,6 @@ def rotate_right(arr, d):
     reverse(arr, 0, n-d-1)
     reverse(arr, 0, n-1)
 
-arr= [1,2,3, 4, 5,6]
-rotate_right(arr, 2)
-print(arr)
-
 
 """ 
 Print Leaders: An element is a leader if it is greater than all the elements to its right side. And the rightmost element is always a leader. 
@@ -266,7 +261,7 @@ Find the smallest missing number,
 Given a sorted array of n distinct integers where each integer is in the range from 0 to m-1 and m > n. 
 Find the smallest number that is missing from the array. 
 Approach: Starting from arr[0] to arr[n-1] check until arr[i] != i. If the condition (arr[i] != i) is satisfied 
-    then ‘i’ is the smallest missing number
+    then i is the smallest missing number
 Time: O(n)
 Space: O(1)
  """
@@ -279,8 +274,8 @@ def smallestMissingElement(arr, n, m):
             break
 
 """ 
-Given an array arr[], find the maximum j – i such that arr[i] <= arr[j]
-Given an array arr[] of N positive integers. The task is to find the maximum of j – i subjected to the constraint of arr[i] <= arr[j].
+Given an array arr[], find the maximum j - i such that arr[i] <= arr[j]
+Given an array arr[] of N positive integers. The task is to find the maximum of j - i subjected to the constraint of arr[i] <= arr[j].
 Time: O(n)
 Space: O(n)
  """
@@ -335,9 +330,10 @@ def subArrayGivenSum(arr, n, sum):
 """ 
 Find the smallest positive number missing from an unsorted array.
 Approach1: Smallest positive number missing from an unsorted array by changing the input Array
-        The idea is to mark the elements in the array which are greater than N and less than 1 with 1.
+        The idea is to mark the elements in the array which are greater than N and less than 1 with 1 to keep all numbers in a range of 1 to n.
 Time: O(n)
 Space: O(1)
+Easier to understand
  """
 def smallestMissingPositive_firstApproach(arr, n):
     if n==0:
@@ -363,12 +359,13 @@ def smallestMissingPositive_firstApproach(arr, n):
 
     # Updating indices according to values
     for i in range(n):
-        if arr[i]!=1:
-            arr[(arr[i]-1)%n] += n
+        val_at_index= abs(arr[i])
+        if val_at_index!=1:
+            arr[val_at_index-1]= -arr[val_at_index-1]
 
     # Finding which index has value less than n
     for i in range(1, n):
-        if arr[i]<n+1:
+        if arr[i]>0:
             return i+1
 
     # If array has values from 1 to n
@@ -407,6 +404,8 @@ def smallestMissingPositive_SecondApproach(arr, n):
 """ 
 Find the two numbers with odd occurrences in an unsorted array
 Approach: Using xor
+https://www.youtube.com/watch?v=pnx5JA9LNM4&t=967s&ab_channel=Pepcoding
+The 2's complement of a number is a way of representing negative numbers in binary
 Time: O(n)
 Space: O(n)
  """
@@ -472,7 +471,7 @@ Approach: The idea is to start from the rightmost element,
 Time: O(n)
 Space: O(1)
  """
-def replaceWithgreatestElementAtRight(arr, n):
+def replaceWithGreatestElementAtRight(arr, n):
     max=arr[n-1]
     arr[n-1]=-1
     for i in range(n-2, -1, -1):
@@ -551,34 +550,151 @@ def commonElements(arr1, arr2, arr3, n1, n2, n3):
             k+=1
 
 """ 
+Next/Previous Greater Element (NGE) and Next/Previous Smaller Element for every element in given Array
+Approach: Using Stack
+O(n)/O(n)
+ """
+def nextGreaterEle(arr, n):
+    stack=[]
+    result=[-1]*n
+    for i in range(n-1, -1, -1):
+        while stack:
+            top_ele= stack[-1]
+            if top_ele<=arr[i]:
+                stack.pop()
+            else:
+                result[i]=top_ele
+                break
+
+        stack.append(arr[i])
+
+    return result
+
+def previousGreaterEle(arr, n):
+    stack=[]
+    result=[-1]*n
+    for i in range(n):
+        while stack:
+            top_ele= stack[-1]
+            if top_ele<=arr[i]:
+                stack.pop()
+            else:
+                result[i]=top_ele
+                break
+
+        stack.append(arr[i])
+
+    return result
+
+def indexOfPreviousSmaller(arr, n):
+    stack=[]
+    result=[-1]*n #keeping index of previous smaller ele
+
+    for i in range(n):
+        while stack:
+            val, index= stack[-1]
+            if val>=arr[i]:
+                stack.pop()
+            else:
+                result[i]= index
+                break
+
+        stack.append((arr[i], i))
+    return result
+
+def indexOfNextSmaller(arr, n):
+    stack=[]
+    result=[n]*n #keeping index of next smaller ele
+
+    for i in range(n-1, -1, -1):
+        while stack:
+            val, index= stack[-1]
+            if val>=arr[i]:
+                stack.pop()
+            else:
+                result[i]=index
+                break
+
+        stack.append((arr[i], i))
+
+    return result
+
+""" 
+Largest area of hitogram
+Approach: prev and next smaller elements using stack
+O(n)/O(n)
+ """
+def largetAreaOfHistogram(arr, n):
+    
+    pre_smaller_index=indexOfPreviousSmaller(arr, n)
+    next_smaller_index=indexOfNextSmaller(arr, n)
+    max_area=0
+    for i in range(n):
+        width= next_smaller_index[i]-pre_smaller_index[i]-1
+        hight= arr[i]
+        max_area= max(max_area, width*hight)
+
+    return max_area
+    
+""" 
 Trapping Rain Water
-Approach: Two Pointer Approach
+""" 
+""" 
+Approach 1: Left and right max
+O(n)/O(n)
+ """
+def trappingRainWaterApproach1(arr, n):
+
+    leftMaxArr=[-1]*n
+    rightMaxArr=[-1]*n
+
+    for i in range(1, n):
+        leftMaxArr[i]= max(arr[i-1], leftMaxArr[i-1])
+
+    for j in range(n-2, -1, -1):
+        rightMaxArr[j]= max(arr[j+1], rightMaxArr[j+1])
+
+    waterVolume=0
+    for i in range(1, n-1):
+        minOfHeightOfPreAndNextBuilding= min(leftMaxArr[i], rightMaxArr[i])
+        if minOfHeightOfPreAndNextBuilding>arr[i]:
+            waterVolume+=minOfHeightOfPreAndNextBuilding-arr[i]
+
+    return waterVolume
+
+"""
+Approach 2: Two Pointer Approach
 Time: O(n)
 Space: O(1)
  """
-def trappingRainwater(arr, n):
+def trappingRainWaterApproach2(arr, n):
     leftMax=arr[0]
     rightMax=arr[n-1]
-    i=0
-    j=n-1
+    left=1
+    right=n-2
     waterVolume=0
 
-    while i<j:
+    while left<right:
         if leftMax<=rightMax:
-            waterVolume+= leftMax-arr[i]
-            i+=1
-            leftMax= max(leftMax, arr[i])
+            if leftMax>arr[left]:
+                waterVolume+= leftMax-arr[left]
+            leftMax= max(leftMax, arr[left])
+            left+=1
         else:
-            waterVolume+= rightMax-arr[j]
-            j-=1
-            rightMax= max(rightMax, arr[j])
+            if rightMax>arr[right]:
+                waterVolume+= rightMax-arr[right]
+            rightMax= max(rightMax, arr[right])
+            right-=1
 
     return waterVolume
 
 
 """ 
 Merge two sorted arrays with O(1) extra space
-Time: O((N+M) * log(N+M))
+""" 
+""" 
+Approach: Two pointer
+Time: O(min(N, M) + Nlog(N)+ Mlog(n))
 Space: O(1)
  """
 def mergeSortedArraysWithoutExtraSpae(arr1, arr2, n, m):
@@ -595,3 +711,41 @@ def mergeSortedArraysWithoutExtraSpae(arr1, arr2, n, m):
 
     arr1.sort()
     arr2.sort()
+
+""" 
+Using Gap method of Shell sort 
+Time: O(log(m+n)*(m+n))
+Space: O(1)
+"""
+def mergeArrays(a, b):
+    n = len(a)
+    m = len(b)
+    gap = (n + m + 1) // 2
+
+    while gap > 0:
+        i = 0
+        j = gap
+
+        while j < n + m:
+          
+            # If both pointers are in the first array a[]
+            if j < n and a[i] > a[j]:
+                a[i], a[j] = a[j], a[i]
+                
+            # If first pointer is in a[] and 
+            # the second pointer is in b[]
+            elif i < n and j >= n and a[i] > b[j - n]:
+                a[i], b[j - n] = b[j - n], a[i]
+                
+            # Both pointers are in the second array b
+            elif i >= n and b[i - n] > b[j - n]:
+                b[i - n], b[j - n] = b[j - n], b[i - n]
+            i += 1
+            j += 1
+
+        # After operating for gap of 1 break the loop
+        if gap == 1:
+            break
+
+        # Calculate the next gap
+        gap = (gap + 1) // 2
