@@ -1,5 +1,6 @@
 """ 
 Remove duplicates from a given string
+Approach: Using seen set
 Time: O(n)
 Space: O(n)
  """
@@ -45,90 +46,131 @@ def removeChars(s1, n1, s2, n2):
 
 """ 
 Check if given strings are rotations of each other or not
-Time: O(N*N)
-Space: O(N)
- """
-def areRotations(string1, string2):
-    size1 = len(string1)
-    size2 = len(string2)
-    temp = ''
+Patter matching problem
+Using KMP algo
+KMP:
+    https://www.youtube.com/watch?v=sODA1BzFvsE&t=1656s&ab_channel=CoderArmy 
+    Mimatch logic at 45:50 min
+    Clear example starts at 49:18 min
+String match:
+    https://www.youtube.com/watch?v=6gQR8TaFXMw&ab_channel=CoderArmy
 
-    # Check if sizes of two strings are same
-    if size1 != size2:
-        return 0
+O(m+n)/O(m)
+ """ 
+def kmp_algo(arr, n):
+    #longest prefix suffix
+    lps=[0]*n
+    pre= 0
+    suf=1
+    while suf<n:
+        if arr[pre]==arr[suf]:
+            lps[suf]=pre+1
+            pre+=1
+            suf+=1
+        else:
+            if pre==0: # reached till zero still no match
+                lps[suf]=0
+                suf+=1
+            else:
+                pre=lps[pre-1] # go to the index stored at previous index in lps     
 
-    # Create a temp string with value str1.str1
-    temp = string1 + string1
+    return lps
 
-    # Now check if str2 is a substring of temp
-    # string.count returns the number of occurrences of
-    # the second string in temp
-    if (temp.count(string2) > 0):
-        return 1
-    else:
-        return 0
+def areRotations_kmp(s1, s2):
+    n1=len(s1)
+    n2= len(s2)
+
+    if n1!=n2:
+        return False
+    
+    s_new= s1+s1
+    n_new=2*n1
+    lps_s2= kmp_algo(s2, n2)
+
+    i=0
+    j=0
+
+    while i<n_new and j<n2:
+        if s_new[i]==s2[j]:
+            i+=1
+            j+=1
+        else:
+            if j==0:
+                i+=1
+            else:
+                j=lps_s2[j-1]
+
+    if j==n2:
+        return True
+        #string match starts at index i-j
+    
+    return False
 
 """ 
-Check if a string is substring of another
- """
+Print all permutations of given string
+Approach: recursion
 """ 
-Approch: Naive
-Time: O(n*m)
-Space: O(1)
+"""
+Approach 1 with space O(n)
+https://www.youtube.com/watch?v=YK78FU5Ffjw&ab_channel=takeUforward
+O(n!*n)/O(n)
  """
-def isSubstring(s1, s2):
-    M = len(s1)
-    N = len(s2)
- 
-    # A loop to slide pat[] one by one
-    for i in range(N - M + 1):
- 
-        # For current index i,
-        # check for pattern match
-        for j in range(M):
-            if (s2[i + j] != s1[j]):
-                break
- 
-        if j + 1 == M:
-            return i
- 
-    return -1
+def getPermutations1(word:str, ds:list, freq:dict):
+    if len(ds)==len(word):
+        print(''.join(ds))
+        return
+    for i in range(len(word)): #dont iterate chars directly as they get add to freq dict and duplicate chars dont pass if cond
+        if i not in freq or freq[i]==False:
+            ds.append(word[i])
+            freq[i]=True
+            getPermutations1(word, ds, freq)
+            ds.pop()
+            freq[i]=False
+
 """ 
-Approach: Efficient
-Time: O(n)
-Space: O(1)
+Approach 2 with space O(1)
+https://www.youtube.com/watch?v=f2ic2Rsc9pU&ab_channel=takeUforward
+O(n!*n)/O(1)
  """
-def isSubstring(s1, s2):
-    if s1 in s2:
-        return s2.index(s1)
-    return -1
+def recurPermute(index, s, ans): #index starts with 0
+
+    # Base Case
+    if index == len(s):
+        ans.append("".join(s))
+        return
+
+    # Swap the current index with all
+    # possible indices and recur
+    for i in range(index, len(s)):
+        s[index], s[i] = s[i], s[index]
+        recurPermute(index + 1, s, ans)
+        s[index], s[i] = s[i], s[index] #swap back the indices to make the word back to previous shape as we are changing original string
 
 """ 
 Reverse words in a given string
+Approach: Reverse the whole string then start word by word and keep reversing them
+https://www.youtube.com/watch?v=RitppzIdMCo&ab_channel=ApnaCollege
 Time: O(n)
 Space: O(1)
  """
-def reverseWords(string: str):
-    n=len(string)
-    temp=''
+def reverseWords(s: str):
+    n= len(s)
+    #reverse the whole string
+    s = s[::-1]
     answer=''
-    start=0
-    for ch in string:
-        print(start)
-        if ch!=' ':
-            temp+=ch
-        elif (ch==' ' and temp):
-            print(f'inside {start}')
-            answer= temp+' '+answer
-            temp=''
+    i=0
+    while i<n:
+        word=''
+        while s[i]!=' ' and i<n:
+            word+=s[i]
+            i+=1
 
-        if start==(n-1) and temp:
-            answer= temp+' '+answer
+        if word!='':
+            orininalWord= word[::-1]
+            answer= answer+orininalWord if answer=='' else answer+' '+orininalWord
 
-        start+=1
-
+        i+=1 #keep on looping if its a space
     return answer
-
 
 """ 
 Smallest window in a String containing all characters of other String
@@ -179,6 +221,7 @@ def findSubString(string: str, pattern: str):
 
 """ 
 Check whether two Strings are anagram of each other
+Approach: Hashmap
 Time: O(n)
 Space: O(1)
  """
@@ -191,7 +234,6 @@ def isAnagram(a, b):
     for i in range(len(a)):
         if (a[i] in map):
             map[a[i]] += 1
- 
         else:
             map[a[i]] = 1
  
@@ -247,6 +289,7 @@ def myAtoi(Str):
 
 """ 
 Rearrange a string so that all same characters become d distance away
+Approach: sorted hasmap
 Time: O(n+mlog(Max))
 Space: O(n)
  """
@@ -280,20 +323,26 @@ def rearragne(string, d):
 
 """ 
 Find Excel column name from a given column number
+Approach: 26 based number system, %26 to get right most letter then /26 to go on searching for next letter.
+Doing -1 to so that we can directly get the letter by adding it to 65(ascii for A). 
+""" 
+
+"""
+Iterative
 Time: O(log26n)
 Space: O(log26n)
  """
 def excel_column_name(column_number):
-    result = ''
+    result = ""
     while column_number > 0:
-        remainder = (column_number - 1) % 26
-        result = chr(65 + remainder) + result
-        column_number = (column_number - 1) // 26
-
+        column_number -= 1  # Adjust for 1-based index
+        remainder = column_number % 26
+        result = chr(65 + remainder) + result  # Convert to corresponding letter
+        column_number = column_number // 26
     return result
 
 """ 
-Using Recursion
+Recursive
 Time: O(log26n)
 Space: O(1)
  """
@@ -301,5 +350,7 @@ def excel_column_name(column_number):
     if column_number == 0:
         return ''
     else:
-        remainder = (column_number - 1) % 26
-        return excel_column_name((column_number - 1) // 26) + chr(65 + remainder)
+        column_number -= 1
+        remainder = column_number % 26
+        letterAtLeft= excel_column_name(column_number // 26)
+        return letterAtLeft + chr(65 + remainder)
