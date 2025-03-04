@@ -79,12 +79,12 @@ class LinkedList:
             
         return False
 
-    def get(self, index):
+    def get(self, index): #important for loop
 
         if 0>index>=self.length:
             return None
 
-        if index==self.length:
+        if index==self.length-1:
             return self.tail
         else:    
             current= self.head
@@ -173,7 +173,7 @@ class LinkedList:
 
             self.head, self.tail = self.tail, self.head
 
-    def middle(self):
+    def middle(self): #important while loop condition
         slow= self.head
         fast= self.head
 
@@ -183,7 +183,7 @@ class LinkedList:
 
         return slow
 
-    def remove_duplicates(self):
+    def remove_duplicates(self): #important tail
 
         if self.length>1:
             seen= set()

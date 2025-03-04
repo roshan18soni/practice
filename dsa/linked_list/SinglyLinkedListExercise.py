@@ -1,5 +1,3 @@
-from asyncio import create_subprocess_shell
-from multiprocessing import dummy
 from SinglyLinkedList import *
 
 def printit(head):
@@ -10,7 +8,7 @@ def printit(head):
 
 """ 
 get Nth node in a Linked List
-O(n)/O(1)
+O(n)/O(1)  
  """
 def getNthEelement(head, n):
     current= head
@@ -18,6 +16,20 @@ def getNthEelement(head, n):
         current= current.next
     
     return current.value
+#or
+def getNthEelement2(head, n):
+    current = head
+    count = 1
+
+    # Traverse the list until the end or until the nth node is reached
+    while current is not None:
+        if count == n:
+            return current.data
+        count += 1
+        current = current.next
+
+    # Return -1 if the index is out of bounds
+    return -1
 
 """
 Given only a pointer/reference to a node to be deleted in a singly linked list
@@ -94,6 +106,7 @@ def reverse(head):
 
 """ 
 Detect loop
+Approach: Floy's loop detect, using slow and fast moving pointers
 O(n)/O(1)
  """
 def detectLoop(head):
@@ -110,6 +123,7 @@ def detectLoop(head):
     
 """ 
 Check if palindrome
+Approach: reverse second hafl, reverse it and then compare 
 O(n)/O(1)
  """
 def isPalindrome(head):
@@ -142,6 +156,7 @@ def isPalindrome(head):
 
 """ 
 Clone a Linked List with next and Random Pointer
+Approach: having adjecent cloned nodes
 Time: O(n)
 Auxiliary Space: O(1)
 Total Space: O(n)
@@ -182,6 +197,7 @@ def clone(head):
 
 """ 
 Clone a Linked List with next and Random Pointer using hashing
+Approach: Using hashmap to store cloned nodes
 Time: O(n)
 Auxiliary Space: O(n)
 Total Space: O(n)
@@ -207,6 +223,7 @@ def cloneUsingHashing(head):
 
 """ 
 Insert new node into sorted list
+Approach: comparing each node
 O(n)/O(1)
  """
 def insertIntoSortedList(head, new_node):
@@ -231,6 +248,9 @@ def insertIntoSortedList(head, new_node):
 
 """
 Intersection of two lists, the end node of one of the linked lists got linked to the second list
+""" 
+"""
+Approach1: using length diff
 O(m+n)/O(1)
  """
 def getIntersection(head1, head2):
@@ -263,24 +283,102 @@ def getIntersection(head1, head2):
     return None
 
 """ 
+Approach2: using swapping pointers
+O(m+n)/O(1)
+ """
+def getIntersection2(head1, head2):
+  
+    # Maintaining two pointers ptr1 and ptr2 
+    # at the heads of the lists
+    ptr1 = head1
+    ptr2 = head2
+
+    # If any one of the heads is None, there is no intersection
+    if not ptr1 or not ptr2:
+        return None
+
+    # Traverse through the lists until both pointers meet
+    while ptr1 != ptr2:
+      
+        # Move to the next node in each list and if the one 
+        # pointer reaches None, start from the other linked list
+        ptr1 = ptr1.next if ptr1 else head2
+        ptr2 = ptr2.next if ptr2 else head1
+
+    # Return the intersection node, or None if no intersection
+    return ptr1
+
+""" 
+Print reverse of a Linked List without actually reversing
+""" 
+
+"""
+Approach1: using recursion
+O(n)/O(n)
+ """
+def printReverseUsingRecursion(head):
+
+    def printReverse(curr):
+        if curr is None:
+            return
+        
+        printReverse(curr.next)
+        print(curr.value, end=" ")
+
+"""
+Approach1: using stack
+O(n)/O(n)
+ """
+def print_reverse(head):
+  
+    st = []
+    curr = head
+
+    while curr:
+        st.append(curr.value)
+        curr = curr.next
+
+    while st:
+        print(st.pop(), end=" ")
+
+""" 
 Remove duplicates from a sorted linked list
+""" 
+"""
+Using Iteration
 O(n)/O(1)
  """
 def removeDuplicatesFromSortedList(head):
-    prev=head
-    curr=head.next
+    curr = head
 
-    while curr:
-        nxt= curr.next
-        if curr.value==prev.value:
-            prev.next=nxt
-            curr.next=None
+    while curr and curr.next:
+        if curr.value == curr.next.value:
+            next_next = curr.next.next
+            curr.next = next_next
         else:
-            prev= curr
-        curr= nxt
+            curr = curr.next
+
+    return head
+
+""" 
+Using recursion
+O(n)/O(n)
+ """
+def removeDuplicatesFromSortedList2(head):
+    if head is None:
+        return
+    if head.next is not None:
+        if head.value == head.next.value:
+            head.next = head.next.next
+            removeDuplicatesFromSortedList2(head)
+        else:
+
+            removeDuplicatesFromSortedList2(head.next)
+
 
 """ 
 Remove duplicates from a unsorted linked list
+Approach: hashset
 O(n)/O(n)
  """
 def removeDuplicates(head):
@@ -304,6 +402,8 @@ def removeDuplicates(head):
         current=nxt
 """ 
 Merge two sorted linked lists
+Approach: dummy node, whenver a new list is created always use dummy node, 
+this makes code cleaner by avoiding extra vars to track head of new list
 O(m+n)/O(1)
  """
 def mergeSortedLists(head1, head2):
@@ -324,9 +424,9 @@ def mergeSortedLists(head1, head2):
 
 """ 
 Reverse a Linked List in groups of given size
+Approach: https://www.youtube.com/watch?v=lIar1skcQYI&ab_channel=takeUforward
 Time: O(n)- While loop takes O(N/K) time and inner for loop takes O(K) time. So N/K * K = N. Therefore TC O(N)
 Space: O(1)
-Watch youtube vedio 'Take U Forward'
  """
 def reverseKGroup(head, k):
     
@@ -346,7 +446,7 @@ def reverseKGroup(head, k):
 
     while temp:
         kthNode= getKthNode(temp, k)
-        if not kthNode:
+        if kthNode is None:
             if previousNode:
                 previousNode.next=temp
             return head
@@ -354,16 +454,17 @@ def reverseKGroup(head, k):
             next= kthNode.next
             kthNode.next= None
 
-            reversedHead= reverse(temp)
+            reverse(temp)
 
             if temp==head:
-                head=reversedHead
+                head=kthNode
             else:
                 previousNode.next= kthNode
 
             previousNode= temp
             temp=next
     return head
+
 """ 
 Sorted insert for circular linked list
 O(n)/O(1)
@@ -395,6 +496,7 @@ def insertToSortedCircularSLL(head, value):
 
 """ 
 Detect and remove the loop
+Approach: FLoyd loop finding algo ie slow and fast pointers
 O(n)/O(1)
  """
 def detectAndRemoveLoop(head):
@@ -421,42 +523,37 @@ def detectAndRemoveLoop(head):
     return head
 
 """ 
-Add two numbers represented by Linked List, each element is single digit number
-O(n)/O(1)
+Add two numbers represented by Linked List, each element is single digit number, elements are present in reversed order
+O(n)/O(n), space cannot be optimised as its used to store the result
  """
-def addTwoNumbers(head1, head2):
-    #assuming the elements in both lists are inserted in reversed fashion
+def addTwoNumbers1(head1, head2):
+    dummy_node=Node(-1)
+    carry=0
     curr1= head1
     curr2= head2
-    new_curr=None
-    carry=0
+    res_curr=dummy_node
+
     while curr1 or curr2:
         x= curr1.value if curr1 else 0
         y= curr2.value if curr2 else 0
 
-        total= x + y + carry
-        
-        digit= total%10
-        carry= total//10
+        sum= x+y+carry
+        digit= sum%10
+        carry=sum//10
 
-        #adding node in reversed fashion
         new_node= Node(digit)
-        new_node.next= new_curr
-        new_curr=new_node
-        
+        res_curr.next= new_node
+        res_curr=res_curr.next
         if curr1:
             curr1= curr1.next
         if curr2:
             curr2= curr2.next
 
-    #handling final carry
     if carry:
-        #adding node in reversed fashion
         new_node= Node(carry)
-        new_node.next= new_curr
-        new_curr=new_node
+        res_curr.next=new_node
 
-    return new_curr
+    return dummy_node.next
 
 
 l1= LinkedList()
