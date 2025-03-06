@@ -1,7 +1,7 @@
 """ 
 implement queue using stack
 Time: enqueue- O(n) dequeue- O(1)
-Stpace: enqueue- O(n) dequeue- O(1)
+Space: enqueue- O(n) dequeue- O(1)
  """
 from collections import deque
 
@@ -15,11 +15,11 @@ class QueueUsingStack:
         if len(self.stack1)==0:
             self.stack1.append(value)
         else:
-            while len(self.stack1)>0:
+            while self.stack1:
                 self.stack2.append(self.stack1.pop())
             self.stack1.append(value)
 
-            while len(self.stack2)>0:
+            while self.stack2:
                 self.stack1.append(self.stack2.pop())
 
     def dequeue(self):
@@ -41,6 +41,8 @@ def areBracketsBalanced(expr):
         else:
             if stack:
                 popped= stack.pop()
+            else:
+                return 'not balanced'
 
             if chr==']':
                 if popped!='[':
@@ -55,6 +57,26 @@ def areBracketsBalanced(expr):
         return 'not balanced'
     else:
         return 'balalced'
+
+""" 
+Reverse Stack/String using recursion
+Approach: Using the nested recursion to reverse the elements
+O(n square)/O(n)
+ """
+def insert_at_botoom(stack, ele):
+    if not stack:
+        stack.append(ele)
+    
+    popped_ele=stack.pop()
+    insert_at_botoom(stack, ele)
+    stack.append(popped_ele)
+
+def reverse(stack):
+    if stack:
+        popped_ele= stack.pop()
+        reverse(stack)
+        insert_at_botoom(stack, popped_ele)
+
 
 """ 
 Special Stack having getMin method
@@ -230,3 +252,131 @@ class StackUsingSingleQueue():
 
     def __str__(self) -> str:
         return ', '.join(self.queue)
+
+""" 
+Expresstion evaluation
+O(n)/O(n)
+ """
+# expression where tokens are 
+# separated by space.
+
+# Function to find precedence
+# of operators.
+def precedence(op):
+	
+	if op == '+' or op == '-':
+		return 1
+	if op == '*' or op == '/':
+		return 2
+	return 0
+
+# Function to perform arithmetic
+# operations.
+def applyOp(a, b, op):
+	
+	if op == '+': return a + b
+	if op == '-': return a - b
+	if op == '*': return a * b
+	if op == '/': return a // b
+
+# Function that returns value of
+# expression after evaluation.
+def evaluate(tokens):
+	
+	# stack to store integer values.
+	values = []
+	
+	# stack to store operators.
+	ops = []
+	i = 0
+	
+	while i < len(tokens):
+		
+		# Current token is a whitespace,
+		# skip it.
+		if tokens[i] == ' ':
+			i += 1
+			continue
+		
+		# Current token is an opening 
+		# brace, push it to 'ops'
+		elif tokens[i] == '(':
+			ops.append(tokens[i])
+		
+		# Current token is a number, push 
+		# it to stack for numbers.
+		elif tokens[i].isdigit():
+			val = 0
+			
+			# There may be more than one
+			# digits in the number.
+			while (i < len(tokens) and
+				tokens[i].isdigit()):
+			
+				val = (val * 10) + int(tokens[i])
+				i += 1
+			
+			values.append(val)
+			
+			# right now the i points to 
+			# the character next to the digit,
+			# since the for loop also increases 
+			# the i, we would skip one 
+			# token position; we need to 
+			# decrease the value of i by 1 to
+			# correct the offset.
+			i-=1
+		
+		# Closing brace encountered, 
+		# solve entire brace.
+		elif tokens[i] == ')':
+		
+			while len(ops) != 0 and ops[-1] != '(':
+			
+				val2 = values.pop()
+				val1 = values.pop()
+				op = ops.pop()
+				
+				values.append(applyOp(val1, val2, op))
+			
+			# pop opening brace.
+			ops.pop()
+		
+		# Current token is an operator.
+		else:
+		
+			# While top of 'ops' has same or 
+			# greater precedence to current 
+			# token, which is an operator. 
+			# Apply operator on top of 'ops' 
+			# to top two elements in values stack.
+			while (len(ops) != 0 and
+				precedence(ops[-1]) >=
+				precedence(tokens[i])):
+						
+				val2 = values.pop()
+				val1 = values.pop()
+				op = ops.pop()
+				
+				values.append(applyOp(val1, val2, op))
+			
+			# Push current token to 'ops'.
+			ops.append(tokens[i])
+		
+		i += 1
+	
+	# Entire expression has been parsed 
+	# at this point, apply remaining ops 
+	# to remaining values.
+	while len(ops) != 0:
+		
+		val2 = values.pop()
+		val1 = values.pop()
+		op = ops.pop()
+				
+		values.append(applyOp(val1, val2, op))
+	
+	# Top of 'values' contains result,
+	# return it.
+	return values[-1]
+
