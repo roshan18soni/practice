@@ -10,7 +10,6 @@ class TreeNode:
 """ 
 Size of a tree
  """
- 
 """ 
 O(n)/O(n)
  """
@@ -20,6 +19,7 @@ def sizeOfTree(rootNode:TreeNode):
     return 1 + sizeOfTree(rootNode.leftChild) + sizeOfTree(rootNode.rightChild)
 
 """ 
+https://www.youtube.com/watch?v=80Zug6D1_r4&t=148s&ab_channel=takeUforward
 O(n)/O(1)
  """
 def sizeOfTreeMorrisInOrderTraversal(rootNode:TreeNode):
@@ -69,7 +69,6 @@ def areIdentical(rootNode1:TreeNode, rootNode2:TreeNode):
 Using level order traversal
 O(N)/O(N)
  """  
-from asyncore import read
 from collections import deque
 
 def areIdentical(rootNode1:TreeNode, rootNode2:TreeNode):
@@ -162,9 +161,27 @@ def morris_in_order_check_identical(root1, root2):
 
 """ 
 max depth or height of tree
+""" 
+
+""" 
+Using recusion
+O(n)/O(n)
+ """
+def maxDepthOrHeight_rec(rootNode):
+    if rootNode is None:
+        return 0
+    
+    left_h= height(rootNode.leftChild)
+    right_h= height(rootNode.rightChild)
+    
+    height= 1+ max(left_h, right_h)
+    return height
+
+"""
+Using Level order
 O(n)/O(w)- here w is max width of any level
  """
-def maxDepthOrHeight(rootNode:TreeNode):
+def maxDepthOrHeight_levelOrd(rootNode:TreeNode):
     if rootNode is None:
         return 0
 
@@ -246,7 +263,7 @@ def build_tree_from_inorder_preorder(inOrderList, preOrderList):
         return None
     
     root= preOrderList.pop(0)
-    inorder_index= inOrderList(root)
+    inorder_index= inOrderList.index(root)
 
     root.left= build_tree_from_inorder_preorder(inOrderList[:inorder_index], preOrderList)
     root.right= build_tree_from_inorder_preorder(inOrderList[inorder_index+1:], preOrderList)
@@ -268,6 +285,8 @@ def build_tree_from_inorder_postorder(inOrderList, postOrderList):
 """ 
 print root to leaf path, using pre-order traversal
 O(n)/O(n)
+Refer this link for non-recursive approaches, they are also easy: 
+https://www.geeksforgeeks.org/print-root-leaf-path-without-using-recursion/
  """
 def printRootToLeafPaths(root: TreeNode, path=[]):
     if not root:
@@ -330,6 +349,10 @@ def countLeafNodes(root: TreeNode):
 
 """ 
 Level order traversal in spiral way
+""" 
+
+"""
+Using Stack
 O(n)/O(w): w is width of max nodes of any level
  """
 def levelOrderTraversalSpiral(root: TreeNode):
@@ -356,6 +379,40 @@ def levelOrderTraversalSpiral(root: TreeNode):
                 stack_left_to_right.append(node.rightChild)
             if node.leftChild:
                 stack_left_to_right.append(node.leftChild)
+
+""" 
+Using queue
+O(n)/O(w)
+ """
+def levelOrderTraversalSpiral_queue(root: TreeNode):
+    if root is None:
+        return
+    
+    myQueue= deque()
+    myQueue.append(root)
+    leftToRight=True
+    result=[]
+    while myQueue:
+        node_row=[]
+        queueLen= len(myQueue)
+        for i in queueLen:
+            node=myQueue.popleft()
+            if leftToRight:
+                index= i
+            else:
+                index= queueLen-i-1
+
+            node_row[index]=node.data
+            if node.leftChild:
+                myQueue.append(node.leftChild)
+            if node.rightChild:
+                myQueue.append(node.rightChild)
+
+            leftToRight=not leftToRight
+
+        result.append[node_row]
+
+    return result
 
 """ 
 diameter of binary tree ie max number of edges between any two nodes.
@@ -411,25 +468,21 @@ def inorder_tree_traversal_without_recursion(root: TreeNode):
 Root to leaf path sum equal to a given number
 O(n/O(h)
  """
-def hasPathSum(root: TreeNode, targetSum):
-    print(root.data)
-    # Base Case 1: If the tree is empty, return False
-    if root is None:
-        return False
-    
-    # Base Case 2: If we are at a leaf node, check if targetSum equals the node's value
+def issum(root:TreeNode, sum):
+    sum-=root.data
+
     if root.leftChild is None and root.rightChild is None:
-        return targetSum == root.data
-    
-    # Recursive Case: Subtract the current node's value from the target sum
-    remainingSum = targetSum - root.data
-    
-    # Check left subtree; if true, stop and return
-    if hasPathSum(root.leftChild, remainingSum):
-        return True
-    
-    # Check right subtree only if left subtree didn't return True
-    return hasPathSum(root.rightChild, remainingSum)
+        if sum==0:
+            return True
+    else:
+        if root.left:
+            if issum(root.leftChild, sum):
+                return True
+        elif root.right:
+            if issum(root.rightChild, sum):
+                return True
+
+    sum+=root.data
 
 """ 
 Print nodes at k distance from root
@@ -484,24 +537,66 @@ def isSubtree(T, S):
     return isSubtree(T.left, S) or isSubtree(T.right, S)
 
 """ 
-Populate inorder successor
+Populate inorder successor of all nodes
 O(n)/O(n)
  """
-prevNode=None
 def populate_inorder_successor(root: TreeNode):
     def inorder_traversal(node):
-        global prevNode
+        nonlocal prevNode
         if root is None:
             return
 
-        populate_inorder_successor(root.leftChild)
+        inorder_traversal(root.leftChild)
         if prevNode:
             prevNode.next=root
-            print(f'prevNode.data-{prevNode.data}, prevNode.next.data-{prevNode.next.data}')
         prevNode=root
 
-        populate_inorder_successor(root.rightChild)
+        inorder_traversal(root.rightChild)
 
+    prevNode=None
+    inorder_traversal(root)
+
+""" 
+Return inorder successor of any given node
+O(n)/O(n)
+ """
+def get_inorder_successor(root: TreeNode, givenNodeVal):
+    def inorder_traversal(root):
+        nonlocal prevNode, successor
+        if root is None:
+            return
+
+        inorder_traversal(root.leftChild)
+        if prevNode and prevNode.data==givenNodeVal:
+            successor=root
+            return
+        prevNode=root
+
+        inorder_traversal(root.rightChild)
+
+    prevNode=None
+    successor=None
+    inorder_traversal(root)
+    print(f'successor of {givenNodeVal} is {successor}')
+
+""" 
+Populate inorder predecessor of all nodes
+O(n)/O(n)
+ """
+def populate_inorder_predecessor(root: TreeNode):
+    def inorder_traversal(node):
+        nonlocal prevNode
+        if root is None:
+            return
+
+        inorder_traversal(root.leftChild)
+        if prevNode:
+            root.previous=prevNode
+        prevNode=root
+
+        inorder_traversal(root.rightChild)
+
+    prevNode=None
     inorder_traversal(root)
 
 """
@@ -567,33 +662,30 @@ def find_max_sum_post_order(root: TreeNode):
 """ 
 using pre order traversal
 O(n/O(n)
- """ 
+ """
 def find_max_sum_pre_order(root: TreeNode):
-    if root is None:
-        return 
-
-    max_sum=[0]
-    max_path=[]
-    def find_max_sum_util(node: TreeNode, current_sum, current_path):
-        if node is None:
+    if root in None:
+        return
+    
+    def find_max_sum_util(root: TreeNode, current_sum, current_path, max_sum, max_path):
+        if root in None:
             return
+        
+        current_sum+=root.data
+        current_path.append(root.data)
 
-        current_sum+=node.data
-        current_path.append(node.data)
-        if node.leftChild is None and node.rightChild is None:
-            if current_sum>max_sum[0]:
-                max_sum[0]= current_sum
-                max_path.clear()
-                max_path.extend(current_path)
+        if root.leftChild in None and root.rightChild is None:
+            if current_sum>max_sum:
+                max_sum=current_sum
+                max_path=current_path[:]
 
-        find_max_sum_util(node.leftChild, current_sum, current_path)
-        find_max_sum_util(node.rightChild, current_sum, current_path)
+        max_sum, max_path= find_max_sum_util(root.leftChild, current_sum, current_path, max_sum, max_path)
+        max_sum, max_path= find_max_sum_util(root.rightChild, current_sum, current_path, max_sum, max_path)
 
-        current_path.pop()
-
-    find_max_sum_util(root, 0, [])
-
-    return max_sum[0], max_path
+        return max_sum, max_path
+    
+    max_sum, max_path= find_max_sum_util(root, 0, [], 0, [])
+    return max_sum, max_path
 
 """ 
 Check whether a given Binary Tree is Complete or not.
@@ -753,8 +845,8 @@ def binary_tree_to_doubly_ll(root:TreeNode):
         if node is None:
             return
 
-        global prev_node
-        global head
+        nonlocal prev_node
+        nonlocal head
 
         convert_to_doubly_ll(node.leftChild)
         if prev_node is None:
@@ -793,6 +885,9 @@ def hieght_of_tree_iteratively(root: TreeNode):
 
 """ 
 Left view of tree
+""" 
+"""
+Iterative
 O(n)/O(w)
  """
 def left_view_of_tree(root: TreeNode):
@@ -814,6 +909,23 @@ def left_view_of_tree(root: TreeNode):
                 my_queue.append(node.rightChild)
 
     return left_view_nodes
+
+"""
+Recursive
+O(n)/O(n)
+ """
+def left_view_recursive(root, level=0, max_level=[-1]):
+    if root is None:
+        return
+    
+    # If this is the first node of this level, print it
+    if level > max_level[0]:
+        print(root.data, end=" ")
+        max_level[0] = level
+
+    # Recur for left and then right subtree
+    left_view_recursive(root.leftChild, level + 1, max_level)
+    left_view_recursive(root.rightChild, level + 1, max_level)
 
 """ 
 Lowest common ancestor BT
@@ -840,10 +952,70 @@ def find_lca(root, n1, n2):
     return left_lca if left_lca is not None else right_lca
 
 """ 
+Print all nodes at k distance from given node
+O(n)/O(n)
+https://www.youtube.com/watch?v=i9ORlEy6EsI&t=735s&ab_channel=takeUforward
+ """
+from collections import defaultdict
+def getParentPreorder(root: TreeNode, parent=None, parentDict=defaultdict(None)):
+    if root is None:
+        return None
+    
+    parentDict[root]=parent
+    parent=root
+
+    getParentPreorder(root.leftChild, parent, parentDict)
+    getParentPreorder(root.rightChild, parent, parentDict)
+
+
+def getNodeByVal(root: TreeNode, val):
+    if root is None:
+        return None
+    
+    if root.data==val:
+        return root
+    
+    return getNodeByVal(root.leftChild, val) or getNodeByVal(root.rightChild, val)
+
+def getKDistanceUtil(node: TreeNode, k, parentDict):
+    myQueue= deque()
+    visited= set()
+    i=0
+
+    myQueue.append(node)
+    while myQueue and i<k:
+        qLen= len(myQueue)
+        for _ in range(qLen):
+            node= myQueue.popleft()
+            visited.add(node)
+
+            if parentDict[node] and parentDict[node] not in visited:
+                myQueue.append(parentDict[node])
+            if node.leftChild and node.leftChild not in visited:
+                myQueue.append(node.leftChild)
+            if node.rightChild and node.rightChild not in visited:
+                myQueue.append(node.rightChild)
+
+        i+=1
+
+    return myQueue
+
+def getKDistance(root, nodeVal, k):
+    parent=None
+    parentDict=defaultdict(None)
+    getParentPreorder(root, parent, parentDict)
+    node= getNodeByVal(root, nodeVal)
+    kNodes= getKDistanceUtil(node, k, parentDict)
+
+    while kNodes:
+        print(kNodes.popleft().data)
+
+
+""" 
 Right view of tree
 O(n)/O(w)
  """
-def left_view_of_tree(root: TreeNode):
+def right_view_of_tree(root: TreeNode):
     if root is None:
         return
 
@@ -929,7 +1101,7 @@ def find_minimum_node_bst_iterative(root:TreeNode):
 check if binary tree is a BST
 O(n)/O(h)
  """
-def check_if_bst(root:TreeNode, min_range, max_range):
+def check_if_bst(root:TreeNode, min_range=float('-inf'), max_range=float('inf')):
     if root is None:
         return True
 
@@ -937,74 +1109,6 @@ def check_if_bst(root:TreeNode, min_range, max_range):
         return True and check_if_bst(root.leftChild, min_range, root.data) and check_if_bst(root.rightChild, root.data, max_range)
     else:
         return False
-
-""" 
-kth smallest node BST
-O(n)/O(h)
- """
-# Helper function to find the k-th smallest element in BST
-def kth_smallest_util(node, k, count):
-    # Base case: If the node is None, return None
-    if node is None:
-        return None
-
-    # Search in the left subtree
-    left = kth_smallest_util(node.leftChild, k, count)
-    
-    # If the left subtree has the k-th smallest, return it
-    if left is not None:
-        return left
-
-    # Increment the count of nodes visited
-    count[0] += 1
-
-    # If the current node is the k-th smallest, return its data
-    if count[0] == k:
-        return node.data
-
-    # Otherwise, search in the right subtree
-    return kth_smallest_util(node.rightChild, k, count)
-
-# Function to find the k-th smallest element in BST
-def kth_smallest(root, k):
-    # Initialize count as a list so that it can be updated in recursive calls
-    count = [0]
-    return kth_smallest_util(root, k, count)
-
-""" 
-kth largest node in BST
- """
-""" 
-O(n)/O(h)
- """
-# Helper function to find the k-th largest element in BST
-def kth_largest_util(node, k, count):
-    # Base case: If the node is None, return None
-    if node is None:
-        return None
-
-    # Search in the right subtree
-    right = kth_largest_util(node.rightChild, k, count)
-    
-    # If the left subtree has the k-th smallest, return it
-    if right is not None:
-        return right
-
-    # Increment the count of nodes visited
-    count[0] += 1
-
-    # If the current node is the k-th smallest, return its data
-    if count[0] == k:
-        return node.data
-
-    # Otherwise, search in the right subtree
-    return kth_largest_util(node.leftChild, k, count)
-
-# Function to find the k-th largest element in BST
-def kth_largest(root, k):
-    # Initialize count as a list so that it can be updated in recursive calls
-    count = [0]
-    return kth_largest_util(root, k, count)
 
 """ 
 kth smallest node BST O(1) space, Morris inorder traversal
@@ -1019,7 +1123,7 @@ def kthSmallest(root: TreeNode, k: int) -> int:
             # Visit this node
             count += 1
             if count == k:
-                return current.val
+                return current.data
             current = current.rightChild
         else:
             # Find the inorder predecessor of current
@@ -1036,11 +1140,63 @@ def kthSmallest(root: TreeNode, k: int) -> int:
                 predecessor.rightChild = None
                 count += 1
                 if count == k:
-                    return current.val
+                    return current.data
                 current = current.rightChild
 
     # If we reach here, then k is larger than the number of nodes in the tree
     return None
+
+""" 
+kth largest node BST O(1) space, Reverse Morris inorder traversal
+O(n)/O(1)
+ """
+def kthLargest(root: TreeNode, k):
+    count=0
+    curr=root
+    
+    while curr:
+        if curr.rightChild is None:
+            count+=1
+            if count==k:
+                return curr.data
+            curr=curr.leftChild
+        else:
+            successor= curr.rightChild
+            while successor.leftChild is not None or successor.leftChild!=curr:
+                successor=successor.leftChild
+
+            if successor.leftChild is None:
+                successor.leftChild=curr
+                curr=curr.rightChild
+            else:
+                count+=1
+                successor.leftChild=None
+                if count==k:
+                    return curr.data
+                curr= curr.leftChild
+
+    return None
+
+""" 
+Sorted Linked List to Balanced BST
+O(n)/O(n)
+ """
+def balancedBSTfromSortedArray(arr):
+    if arr is None:
+        return
+    
+    lenth= len(arr)
+    mid=lenth//2
+
+    root=TreeNode(arr[mid])
+    left_root= balancedBSTfromSortedArray(arr[:mid])
+    right_root= balancedBSTfromSortedArray(arr[mid+1:])
+
+    root.leftChild= left_root
+    root.rightChild= right_root
+
+    return root
+
 
 # root = TreeNode(1)
 # root.leftChild = TreeNode(2)
@@ -1058,6 +1214,5 @@ root.leftChild.leftChild = TreeNode(4)
 root.leftChild.rightChild = TreeNode(12)
 root.rightChild.leftChild = TreeNode(21)
 root.rightChild.rightChild = TreeNode(23)
+getKDistance(root, 22, 2)
 
-s=kth_largest(root, 3)
-print(s)
