@@ -1,5 +1,7 @@
 """ 
 Largest size square submatrix with all 1s
+Approach: Dynamic Programing
+https://www.youtube.com/watch?v=auS1fynpnjo&ab_channel=takeUforward start at 7:48
 O(m*n)/O(m*n)
  """
 def largestSquareSubmatrix(matrix):
@@ -38,6 +40,7 @@ def largestSquareSubmatrix(matrix):
 
 """ 
 Rotate a Rectangular Image by 90 Degree Clockwise
+Approach: traspose then reverse rows
 O(m*n)/O(m*n)
  """
 def rotageBy90Degree(matrix):
@@ -79,7 +82,7 @@ def searchMatrix(matrix, target):
     while row < num_rows and col >= 0:
         if matrix[row][col] == target:
             return (row, col)  # Found the target, return the position
-        elif matrix[row][col] > target:
+        elif target< matrix[row][col]:
             col -= 1  # Move left, as the current element is too large
         else:
             row += 1  # Move down, as the current element is too small
@@ -155,28 +158,26 @@ You can only traverse down, right and diagonally lower cells from a given cell,
 i.e., from a given cell (i, j), cells (i+1, j), (i, j+1), and (i+1, j+1) can be traversed. 
 O(m*n)/O(m*n)
  """
-def minCost(cost, M, N):
-    # Create a DP table of the same size as cost matrix
-    dp = [[0 for x in range(N+1)] for y in range(M+1)]
+def min_cost_path(cost):
+    m, n = len(cost), len(cost[0])
+    dp = [[0] * n for _ in range(m)]
 
-    # Initialize the starting point
     dp[0][0] = cost[0][0]
 
-    # Fill the first row (can only come from the left)
-    for j in range(1, N+1):
+    # Fill first row
+    for j in range(1, n):
         dp[0][j] = dp[0][j-1] + cost[0][j]
 
-    # Fill the first column (can only come from above)
-    for i in range(1, M+1):
+    # Fill first column
+    for i in range(1, m):
         dp[i][0] = dp[i-1][0] + cost[i][0]
 
-    # Fill the rest of the dp array
-    for i in range(1, M+1):
-        for j in range(1, N+1):
-            dp[i][j] = cost[i][j] + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+    # Fill the rest
+    for i in range(1, m):
+        for j in range(1, n):
+            dp[i][j] = cost[i][j] + min(dp[i-1][j], dp[i][j-1])
 
-    # Return the minimum cost to reach (M, N)
-    return dp[M][N]
+    return dp[m-1][n-1]
 
 """ 
 Given a binary 2D array, where each row is sorted. Find the row with the maximum number of 1s. 
@@ -201,39 +202,86 @@ def rowWithMaxOnes(mat):
     return max_row_index, max_ones_count
 
 """ 
-Find Number of Islands in matrix
+Find Number of Islands in matrix using DFS
 O(m*n)/O(m*n)
  """
-def numIslands(grid):
+def numIslands_dfs(grid):
     if not grid:
         return 0
 
     def dfs(grid, i, j):
+        nonlocal islands
+        nonlocal size_of_islands
         # Check if the current position is out of bounds or if it is water (0)
-        if i < 0 or i >= len(grid) or j < 0 or j >= len(grid[0]) or grid[i][j] == '0':
+        if i < 0 or i >= len(grid) or j < 0 or j >= len(grid[0]) or grid[i][j] == 0:
             return
         
         # Mark the current cell as visited by setting it to '0'
-        grid[i][j] = '0'
+        grid[i][j] = 0
+        size_of_islands[islands]= size_of_islands.get(islands, 0)+1
         
-        # Perform DFS on the four adjacent cells (up, down, left, right)
-        dfs(grid, i + 1, j)  # down
-        dfs(grid, i - 1, j)  # up
-        dfs(grid, i, j + 1)  # right
-        dfs(grid, i, j - 1)  # left
+        # Perform DFS on the 8 adjacent cells
+        for row_offset in range(-1, 2):
+            for col_offset in range(-1, 2):
+                dfs(grid, i+row_offset, j+col_offset)
+
 
     islands = 0
+    size_of_islands={}
 
     # Iterate through each cell in the grid
     for i in range(len(grid)):
         for j in range(len(grid[0])):
-            if grid[i][j] == '1':
+            if grid[i][j] == 1:
                 # If a cell contains '1', it's the start of a new island
                 islands += 1
                 # Use DFS to mark the entire island
                 dfs(grid, i, j)
 
-    return islands
+    return islands, size_of_islands
+
+""" 
+Find Number of Islands in matrix using BFS
+O(m*n)/O(m*n)
+ """
+from collections import deque
+def numIslands_bfs(grid):
+
+    def bfs(grid, i, j):
+        nonlocal num_islands
+        nonlocal size_of_islands
+
+        rows= len(grid)
+        cols= len(grid[0])
+        myQ= deque()
+        myQ.append((i, j))
+        grid[x][y]=0 #mark visited as soon as appended to avoid duplicates during neighbour finding
+
+        while myQ:
+            x, y= myQ.popleft()
+            size_of_islands[num_islands]= size_of_islands.get(num_islands, 0)+1
+            # Perform BFS on the 8 adjacent cells
+            for row_offset in range(-1, 2):
+                for col_offset in range(-1, 2):
+                    if row_offset == 0 and col_offset == 0:
+                        continue  # Skip the center cell
+                    nx, ny= x+row_offset, y+col_offset
+                    if nx>=0 and nx<rows and ny>=0 and ny<cols and grid[nx][ny]==1:
+                        myQ.append((nx, ny))
+                        grid[nx][ny]=0 #mark visited as soon as appended to avoid duplicates during neighbour finding
+                
+    rows= len(grid)
+    cols= len(grid[0])
+
+    num_islands=0
+    size_of_islands={}
+    for i in range(rows):
+        for j in range(cols):
+            if grid[i][j]==1:
+                num_islands+=1
+                bfs(grid, i, j)
+
+    return num_islands, size_of_islands
 
 """ 
 find max sum with contiguous sub array
@@ -263,6 +311,7 @@ def maxSubarraySum(arr):
 
 """ 
 Maximum sum rectangle in a 2D matrix
+Approach: merging the rows(sum) to convert them to 1D array and apply Kadane's algo
 O(m*m*n)/O(n)
  """
 def maximumSumRectangle(matrix):
@@ -357,9 +406,9 @@ def rotateMatrixByOne(mat):
         left += 1
 
 """ 
-Given a Boolean Matrix, find k such that all elements in k’th row are 0 and k’th column are 1.
+Given a Boolean Matrix, find k such that all elements in k'th row are 0 and k'th column are 1.
 Approach:
-There can be at most one k that can be qualified to be an answer (Why? Note that if k’th row has all 0’s probably except mat[k][k], then no column can have all 1′)s. 
+There can be at most one k that can be qualified to be an answer (Why? Note that if k'th row has all 0's probably except mat[k][k], then no column can have all 1')s. 
 If we traverse the given matrix from a corner (preferably from top right and bottom left), we can quickly discard complete row or complete column based on below rules. 
 If mat[i][j] is 0 and i != j, then column j cannot be the solution. 
 If mat[i][j] is 1 and i != j, then row i cannot be the solution.
@@ -367,51 +416,62 @@ If mat[i][j] is 1 and i != j, then row i cannot be the solution.
 O(m+n)/O(1)
  """    
 def find_k(matrix):
+    if not matrix or not matrix[0]:
+        return -1  # Handle empty matrix
+
+    rows = len(matrix)
+    cols = len(matrix[0])
+
+    if rows != cols:
+        return -1  # Handle non-square matrix
+
+    for row in matrix:
+        if any(cell not in (0, 1) for cell in row):
+            raise ValueError("Matrix contains invalid data. Only 0 and 1 are allowed.")
 
     def check_for_potential_k(k, matrix):
-
-        print(k)
-        rows= len(matrix)
-        cols= len(matrix[0])
+        rows = len(matrix)
+        cols = len(matrix[0])
 
         for col in range(0, cols):
-            if matrix[k][col]!=0 and col!=k:
+            if matrix[k][col] != 0 and col != k:
                 return False
         for row in range(0, rows):
-            if matrix[row][k]!=1 and row!=k:
+            if matrix[row][k] != 1 and row != k:
                 return False
-            
+
         return True
 
-    rows= len(matrix)
-    cols= len(matrix[0])
-
-    #start from top right
-    start_col_index= cols-1
+    # Start from top right
+    start_col_index = cols - 1
     for i in range(0, rows):
-        while start_col_index>=0:
-            if matrix[i][start_col_index]==0:
-                if i==start_col_index:
+        while start_col_index >= 0:
+            if matrix[i][start_col_index] == 0:
+                if i == start_col_index:
                     if check_for_potential_k(i, matrix):
                         return i
                     else:
                         return -1
                 else:
-                    #moving to previous column
-                    start_col_index-=1
+                    # Moving to previous column
+                    start_col_index -= 1
             else:
-                if i==start_col_index:
+                if i == start_col_index:
                     if check_for_potential_k(i, matrix):
                         return i
                     else:
                         return -1
                 else:
-                    #moving to next row
+                    # Moving to next row
                     break
+
+    return -1  # If no valid k is found
 
 """ 
 Largest Rectangle in hitogram
 O(n)/O(n)
+This solution is: https://www.youtube.com/watch?v=X0X6G-eWgQ8&ab_channel=takeUforward
+Try understanding more optimized one: https://www.youtube.com/watch?v=jC_cWLy7jSI&ab_channel=takeUforward
  """
 def largestRectangleInHistogram(arr):
     my_stack=[]
@@ -479,11 +539,21 @@ def maxRectangle(matrix):
 # arr=[2, 1, 5, 3, 2, 3, 1]
 # print(largestRectangleInHistogram(arr))
 
+# A = [
+#     [0, 1, 1, 0],
+#     [1, 1, 1, 1],
+#     [1, 1, 1, 1],
+#     [1, 1, 0, 0]
+#     ]
+
+# print(maxRectangle(A))
+
 A = [
     [0, 1, 1, 0],
     [1, 1, 1, 1],
-    [1, 1, 1, 1],
-    [1, 1, 0, 0]
+    [1, 1, 0, 0],
+    [1, 1, 0, 1]
     ]
 
-print(maxRectangle(A))
+print(numIslands_dfs(A))
+# print(numIslands_bfs(A))
