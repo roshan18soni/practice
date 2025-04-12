@@ -111,14 +111,12 @@ Longest Subarray with 0 Sum
 O(n)/O(n)
  """
 def largestZeroSumSubArray(arr):
-    sum_seen={}
+    sum_seen={0: -1}
     sum=0
     max_len=0
     for i in range(len(arr)):
         sum+=arr[i]
-        if sum==0:
-            max_len=i+1
-        elif sum in sum_seen:
+        if sum in sum_seen:
             max_len= max(max_len, i-sum_seen[sum])
         else:
             sum_seen[sum]=i
