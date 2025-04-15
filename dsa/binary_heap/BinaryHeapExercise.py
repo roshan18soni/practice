@@ -2,6 +2,9 @@
 find k largest elements in an array
 O(nlogk)/O(k)
  """
+""" 
+By implementing heapify function
+ """
 def find_k_largest(arr, k):
     
     # Function to heapify a subtree rooted at index i in an array of size n
@@ -44,6 +47,21 @@ def find_k_largest(arr, k):
 
     return heap  # Heap contains the k largest elements
 
+""" 
+Using heapq util
+ """
+import heapq
+def findkLargest(arr, k):
+
+    n=len(arr)
+    min_heap= arr[0:k]
+    heapq.heapify(min_heap)
+
+    for ele in arr[k:]:
+        if ele>min_heap[0]:
+            heapq.heappushpop(min_heap, ele)
+
+    return sorted(min_heap, reverse=True) # Optional: to return in descending order
 
 """ 
 build a min-heap from an array
@@ -86,96 +104,35 @@ def build_min_heap(arr):
 """ 
 Find median of running number stream
 O(nlogn)/O(n)
-Try heapq library also
+Using heapq lib
  """
 class MedianFinder:
-    def __init__(self) -> None:
-        self.maxHeap= []
-        self.minHeap= []
+    def __init__(self):
+        self.leftMaxHeap=[]
+        self.rightMinHeap=[]
 
-    def insertNode(self, heap, node_value, heap_type):
-
-        def heapify(heap, node_index, heap_type):
-            if node_index==0:
-                return
-            
-            parent_index= (node_index-1)//2
-            
-            if heap_type=='min':
-                if heap[node_index]<heap[parent_index]:
-                    heap[parent_index], heap[node_index]= heap[node_index], heap[parent_index]
-                    self.insertNode(heap, parent_index, heap_type)
-            elif heap_type=='max':
-                if heap[node_index]>heap[parent_index]:
-                    heap[parent_index], heap[node_index]= heap[node_index], heap[parent_index]
-                    self.insertNode(heap, parent_index, heap_type)
-
-        heap.append(node_value)
-        heapify(heap, len(heap)-1, heap_type)
-
-    def removeNode(self, heap, heap_type):
-
-        def heapify(heap, node_index, heap_type):
-            heapSize= len(heap)
-            if heap_type=='min':
-                smallest= node_index
-                left_child_index= node_index*2+1
-                right_child_index= node_index*2+2
-
-                if left_child_index< len(heap) and heap[left_child_index]<heap[smallest]:
-                    smallest= left_child_index
-                
-                if right_child_index< len(heap) and heap[right_child_index]<heap[smallest]:
-                    smallest= right_child_index
-                
-                if smallest==node_index:
-                    return
-                else:
-                    heap[node_index], heap[smallest]= heap[smallest], heap[node_index]
-                    heapify(heap, smallest, heap_type)
-
-            elif heap_type=='max':
-                greatest= node_index
-                left_child_index= node_index*2+1
-                right_child_index= node_index*2+2
-
-                if left_child_index< len(heap) and heap[left_child_index]>heap[greatest]:
-                    greatest= left_child_index
-                
-                if right_child_index< len(heap) and heap[right_child_index]>heap[greatest]:
-                    greatest= right_child_index
-                
-                if greatest==node_index:
-                    return
-                else:
-                    heap[node_index], heap[greatest]= heap[greatest], heap[node_index]
-                    heapify(heap, greatest, heap_type)
-
-        heap[0]=heap[-1]
-        heap.pop()
-        heapify(heap, 0, heap_type)
-
-    def addNum(self, num:int):
-        if self.maxHeap:
-            if num<=self.maxHeap[0]:
-                self.insertNode(self.maxHeap, num, 'max')
+    def addNum(self, num):
+        if self.leftMaxHeap:
+            if num<=heapq.heappop(self.leftMaxHeap):
+                heapq.heappush(self.leftMaxHeap, num)
             else:
-                self.insertNode(self.minHeap, num, 'min')
+                heapq.heappush(self.rightMinHeap, num)
         else:
-            self.maxHeap.append(num)
+            heapq.heappush(self.leftMaxHeap, num)
 
-        if len(self.maxHeap)>len(self.minHeap)+1:
-            self.insertNode(self.minHeap, self.maxHeap[0], 'min')
-            self.removeNode(self.maxHeap, 'max')
-        elif len(self.minHeap)>len(self.maxHeap):
-            self.insertNode(self.maxHeap, self.minHeap[0], 'max')
-            self.removeNode(self.minHeap, 'min')
-            
-    def findMedian(self):
-        if len(self.maxHeap)>len(self.minHeap):
-            return self.maxHeap[0]
+        if len(self.leftMaxHeap)> len(self.rightMinHeap)+1:
+            temp= heapq.heappop(self.leftMaxHeap)
+            heapq.heappush(self.rightMinHeap, temp)
+        elif len(self.rightMinHeap)>len(self.leftMaxHeap):
+            temp= heapq.heappop(self.rightMinHeap)
+            heapq.heappush(self.leftMaxHeap, temp)
+
+    def getMedian(self):
+        if len(self.leftMaxHeap)>len(self.rightMinHeap):
+            return self.leftMaxHeap[0]
         else:
-            return (self.maxHeap[0]+self.minHeap[0])/2
+            return (self.leftMaxHeap[0]+self.rightMinHeap[0])/2
+
 
 """ 
 Sort a nearly sorted (or K sorted) array
@@ -273,6 +230,7 @@ Merge k sorted arrays
 Or
 Print all elements in sorted order from row and column wise sorted matrix
 
+Approach: add first elements of all arrays to min heap, then pop element one after other and add next element from same machine(if available).
 Note: tuples support heapify, first element is considered for heapifying
 O(nlogk)/O(n) - where n is total elements and k is number of machines
  """
@@ -280,7 +238,7 @@ def sortNumbersStoredOnDiffMachines(sortedMachineArrays):
     heap=[]
     result=[]
 
-    for machine_index in range(len(sortedMachineArrays)):
+    for maxchine_index in range(len(sortedMachineArrays)):
         ele_index=0
         heapq.heappush(heap, (sortedMachineArrays[machine_index][ele_index], machine_index, ele_index))
 
