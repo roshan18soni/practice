@@ -29,14 +29,17 @@ BFS is best for finding the shortest path in unweighted graphs or when level-ord
 
 """ 
 Topological sort, DFS
+Single source shortest path algo using DFS
+Adjacency list
 Sorts the given actions in such a way that if there is a dependency of one action on another, 
 then dependent action always comes later than it parent action.
+https://www.youtube.com/watch?v=5lZ0iJMrUMk&ab_channel=takeUforward
 O(v+e)/v(v+e)
  """
 def topological_sort(graph):
 
     def topological_sort_util(vertex, visited, stack):
-        global graph
+        nonlocal graph
         if vertex not in visited:
             visited.add(vertex)
             edges= graph.get(vertex, [])
@@ -56,7 +59,9 @@ def topological_sort(graph):
 
 from collections import deque
 """ 
-Single source shortest path using BFS
+Topological sort, BFS
+Single source shortest path algo using BFS
+Adjacency list
 Only for unweighted (directed + undirected), easier and better performance than dijkstra and bellman algos 
 Note: BFS method works only for unweighted graphs because for weighted graph breadth way could not be best paths
       DFS cannot be used for SSSP because it goes till the end and then backtrack. eg for this graph A->B->C A->C DFS will give first path for A to C
@@ -84,116 +89,71 @@ def single_source_shortest_path_bfs(graph:dict, source_vertex:str):
 
 """ 
 Dijkstra's algorithm
-Mainly used for weighted graphs without negative cycle, easier and better than bellman 
+Single source sortest path algo
+Adjacency list
+Mainly used for weighted (directed + undirected) graphs without negative cycle, easier and better than bellman 
 O(v square)/O(v).
 In this algo we add total min weight of target from soure to min heap, where as in prim's algo we add pair weights to min heap
+https://www.youtube.com/watch?v=V6H1qAeB-l4&t=874s&ab_channel=takeUforward
  """
 import heapq
-class Edge:
-    def __init__(self, weight, target_vertex):
-        self.weight=weight
-        self.target_vertex= target_vertex
+def dijkstra(graph, start):
+    # Initialize distances dictionary with infinity for all nodes
+    distances = {node: float('inf') for node in graph}
+    distances[start] = 0
 
-class Vertex:
-    def __init__(self, name):
-        self.name= name
-        self.min_weight= float("inf")
-        self.edges= []
-        self.predecesor= None
-        self.visited= False
+    # Min-heap priority queue: (distance, node)
+    min_heap = [(0, start)]
 
-    def __lt__(self, other_vertex):
-        return self.min_weight< other_vertex.min_weight
-        
-    def add_edge(self, weight, target_vertex):
-        edge= Edge(weight, target_vertex)
-        self.edges.append(edge)
+    while min_heap:
+        current_distance, current_node = heapq.heappop(min_heap)
 
-class Dijkstra:
-    def __init__(self):
-        self.min_wieght_vertex_heap=[]
-        
-    def calculate(self, start_vertex:Vertex):
-        start_vertex.min_weight=0
-        heapq.heappush(self.min_wieght_vertex_heap, start_vertex)
+        # Skip if we already found a better path
+        if current_distance > distances[current_node]:
+            continue
 
-        while self.min_wieght_vertex_heap:
-            vertex= heapq.heappop(self.min_wieght_vertex_heap)
+        # Check neighbors
+        for neighbor, weight in graph[current_node]:
+            distance = current_distance + weight
 
-            if not vertex.visited:
-                vertex.visited=True
-                for edge in vertex.edges:
-                    target_vertex_weight= vertex.min_weight+edge.weight
-                    if target_vertex_weight< edge.target_vertex.min_weight:
-                        edge.target_vertex.min_weight= target_vertex_weight
-                        edge.target_vertex.predecesor= vertex
-                        heapq.heappush(self.min_wieght_vertex_heap, edge.target_vertex)
+            # If a shorter path is found
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                heapq.heappush(min_heap, (distance, neighbor))
 
-    def get_sortest_path(self, target_vertex):
-        print(f'sortest path to {target_vertex.name} from source: {target_vertex.min_weight}')
-        while target_vertex:
-            print(target_vertex.name, end=" ")
-            target_vertex=target_vertex.predecesor
+    return distances
 
 """ 
 Bellman Ford algo
-Mainly used to tackle negative cycle, use only for this purpose as its costlier than Dijkstra algo
+Single source sortest path algo
+Adjacency list
+It is for weighted directed graphs.. If undirected graph is given then convert it to directed graph, 0->0 and 0->0
+Intution: input paths can be given in any order, worst case the source path could be given at last hence it takes atmax n-1 cycles to resolve all the distances.
+Negative cycle finding: We will go for one extra iteration ie nth iteration, if distance of any node still updates then there is neg cycle
+Mainly used to tackle negative cycle in weighted directed graph, use only for this purpose as its costlier than Dijkstra algo
 O(ve)/O(v)
+https://www.youtube.com/watch?v=0vVofAhAYjc&ab_channel=takeUforward
 Follow for comparison: https://www.udemy.com/course/data-structures-and-algorithms-bootcamp-in-python/learn/lecture/22158226#overview
  """
-class Node:
-    def __init__(self, value):
-        self.value= value
-        self.predecesor= None
+def bellman_ford(vertices, edges, source):
+    # Step 1: Initialize distances from source
+    distance = {v: float('inf') for v in range(vertices)}
+    distance[source] = 0
 
-    def __hash__(self):
-        return hash(self.value)
+    # Step 2: Relax edges repeatedly
+    for _ in range(vertices - 1):
+        for u, v, weight in edges:
+            if distance[u] + weight < distance[v]:
+                distance[v] = distance[u] + weight
 
-    def __eq__(self, other_node):
-        if isinstance(Node, other_node):
-            return self.value==other_node.value
-        return NotImplemented
+    # Step 3: Check for negative weight cycles
+    for u, v, weight in edges:
+        if distance[u] + weight < distance[v]:
+            print("Graph contains a negative weight cycle")
+            return None
 
-class Graph:
-    def __init__(self, num_vertices):
-        self.num_vertices= num_vertices
-        self.nodes=[]
-        self.edges=[]
-    
-    def add_node(self, node):
-        self.nodes.append(node)
+    return distance
 
-    def add_edge(self, s, d, w):
-        self.edges.append([s, d, w])
-
-    def print_solution(self, dict):
-        print("vertex distance from source")
-        for k, v in dict.items():
-            print(f'{k.value} : {v}')
-            vertex=k
-            while vertex:
-                print(vertex.value, end=' ')
-                vertex= vertex.predecesor
-            print()
-
-
-    def bellManFord(self, source):
-        dict= {i: float('inf') for i in self.nodes}
-        dict[source]= 0
-
-        for _ in range(self.num_vertices-1):
-            for s, d, w in self.edges:
-                if dict[s]!=float('inf') and dict[d] > dict[s] + w:
-                    d.predecesor= s
-                    dict[d]= dict[s] + w
-
-
-        for s, d, w in self.edges:
-            if dict[d] > dict[s] + w:
-                print("negative loop found")
-                return
-            
-        self.print_solution(dict)
 
 """ 
 All pair sortest path:
@@ -204,14 +164,15 @@ Following are other algos for all pair sortest path.
 
 """ 
 Floyd Warshall algo
-We cannnot detect negative cycle with this algo because
-to go through cycle we need to go via negative cycle participating vertex at least twice but this algo never runs loop twice via same vertex.
+Adjacency matrix
+It is for weighted directed graphs.. If undirected graph is given then convert it to directed graph, 0->0 and 0->0
 O(v cube)/O(v square)
+https://www.youtube.com/watch?v=YbY8cVwWAvw&ab_channel=takeUforward
 compare all algos for all pair: https://www.udemy.com/course/data-structures-and-algorithms-bootcamp-in-python/learn/lecture/22208230#overview
  """
 
 INF=9999
-def print_solution(nV, graph):
+def print_solution(nV, graph, neg_cycles):
     for i in range(nV):
         for j in range(nV):
             if graph[i][j]==INF:
@@ -220,21 +181,70 @@ def print_solution(nV, graph):
                 print(graph[i][j], end=" ")
         print("")
 
+    print('negative cycles found for vertices: ')
+    for i in neg_cycles:
+        print(i)
+
 def floydAlgo(nV, graph):
     for k in range(nV):
         for i in range(nV):
             for j in range(nV):
                 graph[i][j]= min(graph[i][j], graph[i][k]+graph[k][j])
 
-    print_solution(nV, graph)
+    # Detect negative cycles: any dp[i][i] < 0 indicates a cycle
+    neg_cycles = [i for i in range(nV) if graph[i][i] < 0]
+
+    print_solution(nV, graph, neg_cycles)
 
 """ 
-Minimum Spaning Tree
-Cheapest way to connct all the vertices, its different from SSSP problem as here there is no single source
+Minimum Spanning Tree
+Spanning tree: A weighted undirected tree with n vertices and n-1 edges and all vertices are reachable from each other
+Minimum Spaning Tree: spannning tree with cheapest n-1 edges to connct all the vertices, its different from SSSP problem as here there is no single source
  """
 
 """ 
+Prim's algo to find MST
+O(elogv)/O(e)
+ """
+def prim(n, adj, start=0):
+    """
+    Runs Prim's algorithm on a connected, undirected graph.
+
+    Args:
+        n (int): Number of vertices (0..n-1).
+        adj (dict): adjacency list {u: [(v, w), ...], ...}.
+        start (int): starting vertex (default 0).
+
+    Returns:
+        mst_edges (list of tuple): edges in the MST as (u, v, w).
+        total_weight (float): sum of MST edge weights.
+    """
+    visited = [False] * n
+    min_heap = [(0, start, None)]  # (weight, current, parent)
+    mst_edges = []
+    total_weight = 0
+
+    while min_heap and len(mst_edges) < n - 1:
+        weight, u, parent = heapq.heappop(min_heap)
+        if visited[u]:
+            continue
+        visited[u] = True
+        if parent is not None:
+            mst_edges.append((parent, u, weight))
+            total_weight += weight
+        for v, w in adj.get(u, []):
+            if not visited[v]:
+                heapq.heappush(min_heap, (w, v, u))
+
+    if len(mst_edges) != n - 1:
+        raise ValueError("Graph is not connected; MST cannot be formed.")
+
+    return mst_edges, total_weight
+
+""" 
 Disjoint Set using union by rank and union by size
+Attach smaller to larget to keep depth/rank shrinked hence make traversal time to find parent less
+https://www.youtube.com/watch?v=aBxjDBC4M1U&t=2408s&ab_channel=takeUforward
 O(v)/O(v)
  """
 class DisjointSet:
@@ -318,72 +328,43 @@ class Graph_K:
 
 
 """ 
-Prim's algo to find MST
-O(elogv)/O(e)
- """
-class Graph_p:
-    def __init__(self):
-        self.nodes=[]
-
-    def add_node(self, node):
-        self.nodes.append(node)
-
-class Node_p:
-    def __init__(self, val):
-        self.val=val
-        self.edges=[]
-
-    def add_edge(self, target_vertex, wt):
-        edge=Edge_p(target_vertex, wt)
-        self.edges.append(edge)
-        
-class Edge_p:
-    def __init__(self, target_vertex:Node_p, wt):
-        self.target_vertex=target_vertex
-        self.wt=wt
-
-class PrimsAlgo:
-    def __init__(self):
-        self.mst=[]
-        self.visited=set()
-        self.weight_min_heap= []
-        self.weight_sum=0
-
-    def solution(self, graph:Graph_p):
-        first_node=graph.nodes[0]
-        heap_tuple= (0, first_node, None)  #(edge_wt, node, parent)
-        heapq.heappush(self.weight_min_heap, heap_tuple)
-
-        while self.weight_min_heap:
-            edge_wt, node, parent = heapq.heappop(self.weight_min_heap)
-            if node.val not in self.visited:
-                self.visited.append(node.val)
-                if parent:
-                    self.mst.append((parent.val, node.val))
-                    self.weight_sum+=edge_wt
-                for edge in node.edges:
-                    target_node= edge.target_vertex
-                    if target_node.val not in self.visited:
-                        heap_tuple= (edge.wt, target_node, node)
-                        heapq.heappush(self.weight_min_heap, heap_tuple)
-
-        print(self.mst)
-        print(self.weight_sum)
-
-""" 
 Kruskal vs Prim's
 
 When to Choose?
 Scenario	                            Preferred Algorithm
 --------------                          -------------------
 Sparse graph	                        Kruskal
-Dense graph	Prim
+Dense graph	                            Prim
 Adjacency matrix representation	        Prim
 Adjacency list representation	        Both work, but Prim is better for dense graphs
 Disconnected graph (need a forest)	    Kruskal
 Dynamic graph	                        Prim
 Simpler implementation	                Kruskal
  """
+
+""" 
+Detect cycle in undirected graph using DFS
+https://www.youtube.com/watch?v=zQ3zgFypzX4&t=698s&ab_channel=takeUforward
+ """
+def detectCycleUndirecteGraph(graph):
+
+    def detectCycleUtil(graph, node, visited, parent):
+        visited.append(node)
+        for adj_node in graph[node]:
+            if adj_node not in visited:
+                return detectCycleUtil(graph, adj_node, visited, node)
+            elif adj_node!=parent:
+                return True
+        
+        return False
+
+    visited=[]
+    nodes= graph.keys()
+    for n in nodes:
+        if n not in visited:
+            return detectCycleUtil(graph, n, visited, -1)
+
+    return False
 
 """ 
 Detect a cycle in directed graph using DFS
@@ -413,30 +394,6 @@ def detectCycleDirectedGraph(graph):
         
         return False
 
-
-""" 
-Detect cycle in undirected graph using DFS
-https://www.youtube.com/watch?v=zQ3zgFypzX4&t=698s&ab_channel=takeUforward
- """
-def detectCycleUndirecteGraph(graph):
-
-    def detectCycleUtil(graph, node, visited, parent):
-        visited.append(node)
-        for adj_node in graph[node]:
-            if adj_node not in visited:
-                return detectCycleUtil(graph, adj_node, visited, node)
-            elif adj_node!=parent:
-                return True
-        
-        return False
-
-    visited=[]
-    nodes= graph.keys()
-    for n in nodes:
-        if n not in visited:
-            return detectCycleUtil(graph, n, visited, -1)
-
-    return False
 
 """ 
 Find if there is a path between two vertices in a directed graph
@@ -508,6 +465,7 @@ class TransitiveClosure:
 
 """ 
 Strongly Connected Components Using Kosaraju's Algorithm DFS
+Strongly Connected Components are only valid for directed graphs 
 O(V+E)/O(V)
  """
 from collections import defaultdict
