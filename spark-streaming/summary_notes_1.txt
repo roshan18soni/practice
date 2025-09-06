@@ -1,0 +1,396 @@
+Spark Structured Streaming + Kafka – Consolidated Summary
+=========================================================
+(Prepared for: roshan-lal-soni_hpeprod)
+
+CONTENTS
+1. Kafka Topics & CLI
+2. Spark Session & Key Configs
+3. Checkpointing: Offsets vs Commits vs State
+4. Reading / Writing Kafka
+5. Exactly-Once Semantics with Kafka
+6. Watermarks: Mechanics, Timing, Uses
+7. Output Modes (append / update / complete)
+8. Windowed Aggregations & Distinct Limits
+9. Why countDistinct Not Allowed (Streaming)
+10. Approximate Aggregations (HyperLogLog)
+11. Watermark Lifecycle & Batch Timing
+12. Watermark Placement (Before Aggregation)
+13. Differences: Late Data Handling vs State Cleanup
+14. State Store (Internal) vs External Key-Value Store
+15. Arbitrary Stateful Processing (applyInPandasWithState)
+16. When to Change Checkpoint Path
+17. Late Event Handling Strategies (Production Safe)
+18. foreachBatch: When & How
+19. Streaming Join Categories
+20. Streaming Join State Cleanup Rules
+21. Memory & State Growth Considerations
+22. Debugging: No Output, Timeouts, Watermarks
+23. Logging/Analyzing Late Events (Patterns)
+24. Practical Patterns for Production
+25. Recap of Do’s and Don’ts
+
+---------------------------------------------------------
+1. Kafka Topics & CLI
+---------------------------------------------------------
+Create topics:
+  kafka-topics.sh --create --topic user-events --bootstrap-server host:9092 --partitions 3 --replication-factor 1
+  kafka-topics.sh --create --topic processed-user-events --bootstrap-server host:9092 --partitions 3 --replication-factor 1
+Produce:
+  kafka-console-producer.sh --topic user-events --bootstrap-server host:9092
+Consume:
+  kafka-console-consumer.sh --topic user-events --bootstrap-server host:9092 --from-beginning
+Group lag:
+  kafka-consumer-groups.sh --bootstrap-server host:9092 --describe --group spark-streaming-consumer
+
+---------------------------------------------------------
+2. Spark Session & Key Configs (Spark 3.5.0)
+---------------------------------------------------------
+Essential:
+  spark.jars.packages = org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0
+Adaptive:
+  spark.sql.adaptive.enabled=true
+Resource (example):
+  spark.executor.instances=4
+  spark.executor.cores=4
+  spark.executor.memory=8g
+Shuffle:
+  spark.sql.shuffle.partitions=200
+Serialization:
+  spark.serializer=org.apache.spark.serializer.KryoSerializer
+Checkpoint (per sink):
+  .option("checkpointLocation", "...") on every writeStream
+
+---------------------------------------------------------
+3. Checkpointing: Offsets vs Commits vs State
+---------------------------------------------------------
+Offsets log (offsets/N):
+  Written BEFORE processing → declares the exact input slice (e.g., Kafka end offsets).
+Commit log (commits/N):
+  Written AFTER successful sink write.
+State:
+  Stored under state/ for aggregations, joins, stateful APIs.
+metadata/:
+  Query plan & schema fingerprint.
+If offsets/N exists but commits/N missing → batch replays deterministically.
+
+---------------------------------------------------------
+4. Reading / Writing Kafka
+---------------------------------------------------------
+Read:
+  spark.readStream.format("kafka")
+    .option("kafka.bootstrap.servers", servers)
+    .option("subscribe", topic)
+    .option("startingOffsets","latest|earliest")
+    .load()
+Parse JSON:
+  from_json(col("value").cast("string"), schema)
+Write:
+  df.selectExpr("CAST(key AS STRING)","CAST(value AS STRING)")
+    .writeStream.format("kafka")
+    .option("kafka.bootstrap.servers", servers)
+    .option("topic", outputTopic)
+    .option("checkpointLocation", path)
+    .outputMode("append|update")
+    .start()
+
+---------------------------------------------------------
+5. Exactly-Once Semantics with Kafka
+---------------------------------------------------------
+Enabled by:
+  - Checkpointing (offset tracking)
+  - Deterministic micro-batch planning
+  - Kafka transactional producer (kafka.transactional.id)
+Crash scenarios:
+  After offsets, before write → reprocess same offsets.
+  After write, before commit → reprocess; Kafka transaction idempotence prevents duplication.
+
+---------------------------------------------------------
+6. Watermarks: Mechanics, Timing, Uses
+---------------------------------------------------------
+Definition:
+  watermark = (max event time from PREVIOUS batch) - delay
+First batch: watermark not set (safety).
+Uses:
+  - Late event dropping (event_time < watermark)
+  - State cleanup (ONLY when event time used in time window / stateful grouping)
+  - Finalizing windows for append mode
+Watermark lags by one batch (intentionally conservative).
+
+---------------------------------------------------------
+7. Output Modes
+---------------------------------------------------------
+append:
+  - Only final rows (e.g., closed windows, non-agg pass-through).
+update:
+  - Rows whose aggregates changed since last batch (running counters).
+complete:
+  - Entire result table each batch (costly for large state).
+Invalid combos:
+  - Non-window aggregate + append (unless fully finalizable per batch → typically not).
+Window + watermark + append = valid (window finality drives output).
+
+---------------------------------------------------------
+8. Windowed Aggregations & Distinct Limits
+---------------------------------------------------------
+Allowed:
+  count, sum, avg, min, max, approx_count_distinct, conditional sums
+Not supported (streaming):
+  countDistinct, collect_set, collect_list (unbounded state)
+Window closure:
+  Occurs when watermark > window_end
+State cleanup:
+  Freed after closure & internal retention.
+
+---------------------------------------------------------
+9. Why countDistinct Not Allowed
+---------------------------------------------------------
+Requires holding entire distinct set per key/window.
+Watermark only finalizes after-the-fact; does not reduce state size DURING accumulation.
+Risk: unbounded memory → rejected at analysis phase.
+Use approx_count_distinct (HyperLogLog, fixed memory, ~98–99% accuracy).
+
+---------------------------------------------------------
+10. Approximate Aggregations (HyperLogLog)
+---------------------------------------------------------
+approx_count_distinct(col, rsd?)
+  - Fixed memory (~1–2 KB)
+  - Probabilistic cardinality
+Trade-off:
+  Slight error margin vs suitability for infinite streams.
+
+---------------------------------------------------------
+11. Watermark Lifecycle & Batch Timing
+---------------------------------------------------------
+End of batch: compute (max_event_time_current - delay) and store → used in next batch.
+Empty batch does not advance watermark.
+Late data evaluation always uses prior batch’s watermark.
+
+---------------------------------------------------------
+12. Watermark Placement (Before Aggregation)
+---------------------------------------------------------
+Must call withWatermark BEFORE groupBy/window/agg.
+If placed after aggregation:
+  - Event-time semantics lost
+  - Spark cannot prune state or reason about lateness
+  - May error or produce incorrect/no cleanup.
+
+---------------------------------------------------------
+13. Late Data Handling vs State Cleanup
+---------------------------------------------------------
+Case A (no time in grouping):
+  - Watermark still filters late events
+  - BUT state (e.g., running count) never cleaned → grows with unique keys.
+Case B (window/time grouping):
+  - Watermark both filters late events AND triggers state cleanup after windows close.
+
+---------------------------------------------------------
+14. State Store (Internal) vs External Key-Value Store
+---------------------------------------------------------
+Internal (checkpoint/state):
+  - Managed, fault-tolerant, event-time aware.
+  - Used for window aggs, joins, dedupe, mapGroupsWithState / applyInPandasWithState.
+External (Redis, Cassandra):
+  - Manual reliability & idempotence required.
+  - Use via foreachBatch or UDF logic.
+
+---------------------------------------------------------
+15. Arbitrary Stateful Processing
+---------------------------------------------------------
+Modern PySpark: applyInPandasWithState (Spark 3.5)
+Signature:
+  groupBy(key_column).applyInPandasWithState(func, outputStructType, stateStructType, outputMode, timeoutConf)
+State timeouts:
+  NoTimeout / EventTimeTimeout / ProcessingTimeTimeout (depending on API variant).
+mapGroupsWithState: more native in Scala; Python limited dataset semantics historically.
+
+---------------------------------------------------------
+16. When to Change Checkpoint Path
+---------------------------------------------------------
+Always change if:
+  - Output schema changes (column added/removed/renamed)
+  - Aggregation/window logic changes
+  - Output mode changes in a way that invalidates previous sink state
+Symptom when reused incorrectly:
+  - Silent stagnation (numInputRows=0 or no output) without explicit error.
+
+---------------------------------------------------------
+17. Late Event Handling Strategies (Production)
+---------------------------------------------------------
+Avoid: Full duplicate stream without watermark (unbounded cost).
+Safe patterns:
+  1. Dual watermark tiers (main: 5m, audit: 30m)
+  2. Sample late data (e.g., 5–10% sample)
+  3. Metrics-only logging (counts, max lateness)
+  4. Periodic batch reconciliation (re-run batch job)
+  5. Store summarized + sampled raw records.
+
+---------------------------------------------------------
+18. foreachBatch
+---------------------------------------------------------
+Use cases:
+  - JDBC bulk upserts
+  - Multi-sink fanout
+  - External REST or ML scoring
+  - Custom dedupe with external store
+Important:
+  - Output mode still governs what DataFrame you receive.
+  - No built-in exactly-once unless you implement idempotency.
+  - Do NOT rely on internal state store (you must manage state externally if needed).
+
+---------------------------------------------------------
+19. Streaming Join Categories
+---------------------------------------------------------
+1. Stream + Static:
+   - Static broadcast join, no watermark needed.
+2. Stream + Stream (no constraints):
+   - Dangerous: unbounded state (DO NOT USE in prod).
+3. Stream + Stream (with watermark + time bound):
+   - Recommended (bounded state).
+4. Stream + Batch (foreachBatch):
+   - Stateless across batches (external enrichment per batch).
+
+---------------------------------------------------------
+20. Streaming Join State Cleanup Rules
+---------------------------------------------------------
+Universal logic (independent of join type):
+  Left record removable when right watermark > left_event_time + join_bound
+  Right record removable when left watermark > right_event_time (+ bound if forward directed)
+Join type only affects output timing (e.g., outer join delays unmatched emission until watermark passes), NOT cleanup mechanism.
+
+---------------------------------------------------------
+21. Memory & State Growth Considerations
+---------------------------------------------------------
+Drivers of state size:
+  - Watermark delay magnitude (longer delay → bigger state)
+  - Join time window / allowed lateness
+  - Key cardinality & skew
+  - Lack of windowing/time constraint on aggregations
+Mitigations:
+  - Lower delays (balance with late data requirements)
+  - Pre-aggregate upstream
+  - Use approximate or bounded sketches
+  - Monitor stateOperators.memoryUsedBytes
+
+---------------------------------------------------------
+22. Debugging Issues
+---------------------------------------------------------
+No Output:
+  - Check lastProgress.numInputRows
+  - Validate startingOffsets
+  - Ensure new events produced after stream start
+  - Confirm no over-filtering
+Kafka Write Timeout:
+  - Topic existence / ACL / network
+  - Large batch vs broker throughput
+  - Test static DataFrame write
+Watermark Not Advancing:
+  - Low input rate
+  - All events same timestamp
+  - Empty batches
+Check:
+  for q in spark.streams.active: print(q.lastProgress)
+
+---------------------------------------------------------
+23. Logging / Analyzing Late Events
+---------------------------------------------------------
+Methods:
+  - Real watermark extraction (query.lastProgress.eventTime.watermark) applied to raw/all stream
+  - Bounded late capture window (extended watermark stream)
+  - Sampling late events
+  - Metric-only storage (late_count, max_lateness, affected_users)
+Do NOT keep infinite retention stream without watermark.
+
+---------------------------------------------------------
+24. Production Patterns
+---------------------------------------------------------
+“Fast + Accurate”:
+  - Fast path: short watermark (real-time dashboards)
+  - Accurate path: long watermark or batch recomputation
+Late Event SLIs:
+  - Watermark lag
+  - Late event ratio
+  - Max lateness observed
+Monitoring:
+  - Track stateOperators → memoryUsedBytes, numRowsTotal
+  - Alert on high lag or memory explosion.
+
+---------------------------------------------------------
+25. Recap (Do’s & Don’ts)
+---------------------------------------------------------
+DO:
+  - Set watermark before window/aggregation
+  - Use approx_count_distinct
+  - Allocate unique checkpoint per transformed plan
+  - Apply time bounds in stream-stream joins
+  - Monitor query.lastProgress regularly
+  - Use transactional Kafka for exactly-once
+
+DON’T:
+  - Use countDistinct in streaming aggregations
+  - Reuse old checkpoint after schema/logic change
+  - Run stream-stream join without watermark & bounds
+  - Hold full unbounded “raw no-watermark” duplicate stream in prod
+  - Depend on foreachBatch for implicit state management
+
+---------------------------------------------------------
+SELECT CODE SNIPPETS
+---------------------------------------------------------
+Windowed Aggregation (append mode):
+res = (df
+  .withWatermark("event_time","10 minutes")
+  .groupBy(window(col("event_time"),"5 minutes","1 minute"), col("user_id"))
+  .agg(
+    count("*").alias("events"),
+    approx_count_distinct("session_id").alias("approx_sessions")
+  )
+  .withColumn("window_start", col("window.start"))
+  .withColumn("window_end", col("window.end"))
+  .drop("window"))
+
+Kafka Sink with Exactly-Once:
+(res
+ .selectExpr("CAST(user_id AS STRING) AS key",
+             "to_json(named_struct('window_start',window_start,'window_end',window_end,'events',events,'approx_sessions',approx_sessions)) AS value")
+ .writeStream
+ .format("kafka")
+ .option("kafka.bootstrap.servers", SERVERS)
+ .option("kafka.transactional.id","user-windows-txn")
+ .option("checkpointLocation", CHECKPOINT)
+ .outputMode("append")
+ .start())
+
+Arbitrary Stateful (applyInPandasWithState):
+state_schema = StructType([StructField("count", IntegerType())])
+output_schema = StructType([StructField("user", StringType()), StructField("count", IntegerType())])
+
+def update_count(keys, pdf_iter, state):
+  for pdf in pdf_iter:
+    user = keys[0]
+    prev = state.get("count") if state.exists else 0
+    new = prev + len(pdf)
+    state.update({"count": new})
+    import pandas as pd
+    yield pd.DataFrame([{"user": user, "count": new}])
+
+result = (events
+  .groupBy("user")
+  .applyInPandasWithState(
+     update_count,
+     outputStructType=output_schema,
+     stateStructType=state_schema,
+     outputMode="update",
+     timeoutConf="NoTimeout"))
+
+Late Event Metrics (bounded approach):
+main = stream.withWatermark("event_time","5 minutes")
+audit = stream.withWatermark("event_time","30 minutes")
+# In foreachBatch over audit: classify rows where event_time < (audit_max - 5m).
+
+Monitoring Watermark:
+progress = query.lastProgress
+progress["eventTime"]["watermark"]
+
+---------------------------------------------------------
+END OF SUMMARY
+---------------------------------------------------------
+If you need a shorter cheat sheet, notebook conversion, or PDF export, ask anytime.

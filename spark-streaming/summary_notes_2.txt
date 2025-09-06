@@ -1,0 +1,317 @@
+Spark Structured Streaming Advanced Notes – Consolidated Summary (Supplement)
+
+CONTENTS
+1. Streaming Query Lifecycle (StreamingQuery, start(), awaitTermination())
+2. Running Without awaitTermination()
+3. StreamingQueryProgress Metrics
+4. Kafka + Spark Schema Handling (JSON, Avro, Protobuf, Registry)
+5. Schema Registry Architecture & Enforcement
+6. Enforcing Backward Compatibility (Gates & Workflow)
+7. Using Specific Schema Versions
+8. ABRiS Library Overview & Usage
+9. Confluent Wire Format (Magic Byte + Schema ID)
+10. Subject Name Handling (read vs write)
+11. Avro Fundamentals & Evolution Model
+12. Schema Evolution Across Formats (Avro / Parquet / JSON / CSV)
+13. Avro Type Changes & Promotion Rules
+14. Serialization vs Transport (SerDe vs Binary)
+15. JSON from Kafka: binary → string → structured
+16. Kafka Serialization Formats Overview
+17. Text vs Structured Formats Clarification
+18. Structure Preservation & Why Plain Text Loses Semantics
+19. Protobuf Essentials (Schemas, Generate Code, SerializeToString)
+20. Avro vs Protobuf – When to Choose Which
+21. Avro Code Generation (Why, When, How) + Spark Examples
+22. With vs Without Code Generation in Spark (Generic vs Specific)
+23. Schema Evolution with ABRiS & Registry
+24. Best Practices & Decision Matrix
+
+--------------------------------------------------
+1. Streaming Query Lifecycle
+--------------------------------------------------
+- query = writeStream.start() returns StreamingQuery handle.
+- StreamingQuery gives: id (logical), runId (changes on restart), name, status, lastProgress, recentProgress, isActive, stop(), awaitTermination().
+- start():
+  1 Validate plan & sink
+  2 Initialize offsets & checkpoint dirs
+  3 Resolve sources
+  4 Launch micro-batch loop (separate thread)
+  5 Return immediately (non-blocking)
+- awaitTermination() blocks calling thread until:
+  - Normal stop() → returns None / True-like
+  - Timeout reached (if timeout param) → returns False
+  - Exception → raises
+- Multiple queries: manage via spark.streams.active or store references.
+
+--------------------------------------------------
+2. Running Without awaitTermination()
+--------------------------------------------------
+- Interactive shells/Jupyter: not mandatory (kernel keeps JVM alive).
+- Standalone script without awaitTermination(): main thread exits → JVM shutdown → queries stop prematurely.
+- Alternatives: custom monitor loop, signal handlers, threads, API server loops, event-driven termination.
+- Use awaitTermination() for: single-purpose streaming app, controlled run duration jobs, simple deployment scenarios.
+
+--------------------------------------------------
+3. StreamingQueryProgress Metrics
+--------------------------------------------------
+Key fields (per completed trigger):
+- batchId, timestamp, numInputRows
+- inputRowsPerSecond, processingRowsPerSecond
+- durationMs: getOffset/latestOffset/getBatch/addBatch/queryPlanning/triggerExecution/walCommit
+- eventTime: min/max/avg/watermark
+- sources[]: per-source description, startOffset/endOffset/latestOffset, inputRowsPerSecond, numInputRows
+- stateOperators[]: numRowsTotal, numRowsUpdated, memoryUsedBytes, customMetrics
+- sink: description, numOutputRows
+Uses:
+- Throughput vs lag diagnostics
+- Watermark progression validation
+- State size growth monitoring
+- Performance hotspot identification (e.g. high getBatch vs addBatch)
+
+--------------------------------------------------
+4. Kafka + Spark Schema Handling
+--------------------------------------------------
+Formats discussed: JSON (text), Avro (binary + schema), Protobuf (binary + generated code), CSV (minimal), custom (UDF), MessagePack (binary), JSON Schema, Protobuf via Schema Registry.
+Spark ingestion steps (Kafka):
+  value (binary) → cast("string") → parse (JSON) OR from_avro/from_protobuf (direct on binary).
+Schema evolution drivers: optional field additions, safe type promotions, minimal breaking changes.
+
+--------------------------------------------------
+5. Schema Registry Architecture & Enforcement
+--------------------------------------------------
+Components:
+- Subjects (topic-key/topic-value) with compatibility policy
+- Stored versions (id + schema)
+- Compatibility engine (BACKWARD / FORWARD / FULL + *_TRANSITIVE)
+- REST API for register, get, test compatibility
+Enforcement points:
+- Registration time: rejects incompatible schema
+- Serialization time: producer uses schema ID (autoRegister off in prod)
+- Deserialization time: consumer fetches schema by ID (cached)
+Benefits: central governance, rollback, audit trail, independent team evolution.
+
+--------------------------------------------------
+6. Enforcing Backward Compatibility
+--------------------------------------------------
+Two gates:
+1 Subject compatibility set to BACKWARD or BACKWARD_TRANSITIVE.
+2 Producer pre-flight: check /compatibility before deploying; disable auto schema registration.
+Workflow:
+- New schema proposed
+- CI script: POST compatibility check
+- If pass → register schema
+- Producer uses to_avro(... autoRegister=false) or ABRiS with explicit subject; fails fast if unregistered.
+
+--------------------------------------------------
+7. Using Specific Schema Versions
+--------------------------------------------------
+Options:
+- Latest compatible (default) vs explicit version= or schemaId= parameter (from_avro/to_avro).
+- Manual retrieval via SchemaRegistryClient.get_version(subject, version)
+- Multi-version fallback: coalesce(from_avro(...v3), from_avro(...v2), ...).
+Use cases:
+- Deterministic replay
+- Freeze consumer against moving “latest”
+- Gradual migration verification.
+
+--------------------------------------------------
+8. ABRiS Overview
+--------------------------------------------------
+ABRiS = Avro Bridge for Spark:
+- Fluent builder: fromConfluentAvro()/toConfluentAvro()
+- Supports: downloadReaderSchemaByLatestVersion / ByVersion / ById
+- Handles Confluent wire format automatically
+- Simplifies exact version pinning and evolution handling
+- Advantages over raw Spark Avro for complex multi-schema pipelines.
+
+--------------------------------------------------
+9. Confluent Wire Format
+--------------------------------------------------
+Layout:
+[0x00 magic][4-byte schema id][avro payload bytes]
+Purpose: send only schema id per message (compact), schema fetched once & cached.
+Reading: from_avro inspects first byte & id.
+Writing: to_avro builds payload prepending magic + id.
+
+--------------------------------------------------
+10. Subject Name Handling
+--------------------------------------------------
+Read: subject not required (schema ID present).
+Write: MUST specify subject to control version lineage & avoid mis-inference (topic-value).
+Best practice: always explicit subject & autoRegister=false in production.
+
+--------------------------------------------------
+11. Avro Fundamentals
+--------------------------------------------------
+- Row-oriented binary
+- Schema stored once per file (header) OR referenced via registry
+- Reader/Writer schema resolution rules (name-based fields, defaults, aliases)
+- Supports unions, logical types, promotion, defaults
+- Schema not embedded per record (efficiency).
+Evolution strengths: aliasing, defaults, name-based resolution.
+
+--------------------------------------------------
+12. Schema Evolution Across Formats
+--------------------------------------------------
+Evolution Quality:
+- Avro: Excellent (names, defaults, aliases)
+- Parquet: Good (column add/remove via mergeSchema; limited type changes)
+- JSON: Limited (inference, no formal defaults)
+- CSV: Poor (positional, no typing, brittle)
+Use Avro for streaming evolution heavy contexts; Parquet for analytical storage; JSON for interoperability/debug; CSV only for simplest raw ingestion.
+
+--------------------------------------------------
+13. Avro Type Promotion Rules
+--------------------------------------------------
+Valid promotions: int→long→float→double; string↔bytes; enum→string; array<T> to array<U> if T promotes; map values same; union expansion (add new branch).
+Invalid: narrowing (double→int), incompatible (string→int), removing union branch without fallback.
+Incompatible attempts → AvroTypeException at read/resolve phase.
+
+--------------------------------------------------
+14. Serialization vs Transport
+--------------------------------------------------
+- Serialization Format = logical structure definition (JSON, Avro, Protobuf).
+- Transport = binary bytes (all end up as bytes for Kafka).
+- Text vs binary: difference in compactness, explicit typing, markers.
+- SerDe includes both text and binary formats if they define unambiguous two-way transformation.
+
+--------------------------------------------------
+15. JSON from Kafka Pipeline
+--------------------------------------------------
+binary (value) → cast("string") → from_json(string, schema) → structured columns.
+Cast required: from_json expects STRING not BINARY.
+Example progression:
+b'{"id":101,"name":"Alice"}' → '{"id":101,"name":"Alice"}' → Row(id=101,name='Alice').
+
+--------------------------------------------------
+16. Kafka Serialization Formats Overview
+--------------------------------------------------
+Common:
+- JSON (human readable / verbose)
+- Avro (compact, evolution, registry)
+- Protobuf (very compact, field numbers, codegen)
+- CSV (simple, no nested)
+- MessagePack / custom (UDF)
+- JSON Schema / Protobuf via Schema Registry
+Selection drivers: size, evolution, latency, tooling ecosystem, consumer diversity.
+
+--------------------------------------------------
+17. Text vs Structured Format Clarification
+--------------------------------------------------
+Plain text is only a sequence of bytes with no structural cues.
+Structured formats embed delimiters/meta (braces, tags, length prefixes) enabling lossless reconstruction.
+Without markers: cannot infer boundaries, names, types reliably.
+
+--------------------------------------------------
+18. Why Plain Text Loses Structure Meaning
+--------------------------------------------------
+Problem: “Roshan 30 true 95 87 91” → ambiguous; no field identifiers or array demarcation.
+JSON “{...}” or Avro binary encodes field names / positions / types → deterministic parsing.
+Hence structural semantics depend on format semantics, not on the fact data traveled as bytes.
+
+--------------------------------------------------
+19. Protobuf Essentials
+--------------------------------------------------
+- .proto IDL (proto3 commonly)
+- Field numbers define wire representation; names metadata only
+- Compact varint encoding
+- Code generation mandatory (fast path)
+- Evolution constraints: keep numbers stable, avoid required (proto3 dropped 'required'), cannot safely repurpose old field numbers.
+- SerializeToString(): object → wire bytes; ParseFromString(): bytes → object.
+
+--------------------------------------------------
+20. Avro vs Protobuf – When
+--------------------------------------------------
+Use Avro:
+- Data lake / Spark-native pipelines
+- Heavy schema evolution, defaults & aliases needed
+- Schema Registry centric governance
+Use Protobuf:
+- Microservices / gRPC / low latency
+- Extreme size/performance sensitivity
+- Strict typing; code-generation culture
+Mixed:
+- Protobuf at service edge → transform to Avro in analytic backbone.
+
+--------------------------------------------------
+21. Avro Code Generation – Why & When
+--------------------------------------------------
+Why:
+- Type safety (strong languages)
+- IDE autocomplete & compile-time checks
+- Performance (skip generic reflection)
+When:
+- Stable schemas
+- Large codebase with shared models
+Less needed in Python (dynamic), more in Java/Scala.
+Process:
+- Define .avsc or .avdl → run avro-tools / avrogen → use generated classes (SpecificRecord).
+In Python: optional; generic records often sufficient.
+
+--------------------------------------------------
+22. With vs Without Code Generation in Spark
+--------------------------------------------------
+Without (Generic):
+- from_avro(value, schema_str) → struct
+- Quick iteration, flexible
+With (Specific):
+- Generate classes (Java/Scala typical)
+- Deserialize into SpecificRecord, map to Row
+- In Python, usually decode via DatumReader + custom UDF (higher overhead)
+Tradeoff: simplicity vs strict typing/perf.
+
+--------------------------------------------------
+23. Schema Evolution with ABRiS & Registry
+--------------------------------------------------
+Pattern:
+- Set compatibility (BACKWARD_TRANSITIVE)
+- Pre-flight test_compatibility
+- Register schema
+- Writers: downloadSchemaByVersion or latest (controlled)
+- Readers: downloadReaderSchemaByLatestVersion (auto-null for absent fields)
+Version detection: add derived “schema_version” column (presence test on new fields) for monitoring migration progress.
+
+--------------------------------------------------
+24. Best Practices & Decision Matrix
+--------------------------------------------------
+Watermark & Finality:
+- Always set watermark pre-window to allow state cleanup.
+Schema Governance:
+- Always disable autoRegister in prod; gate via CI compatibility checks.
+Format Choice:
+- Avro default for analytics streaming with evolution.
+- Protobuf for inter-service & size-critical channels.
+Subject Handling:
+- Always explicit subject on write.
+Monitoring:
+- Alert on watermark lag, state memory, triggerExecution spikes.
+Backward Compatibility Rules (Avro):
+- Add optional with defaults
+- Do not remove required without providing defaults/aliases
+- Use aliases on rename
+- Follow promotion ladder for numeric changes
+Protobuf Cautions:
+- Never reuse field numbers
+- Avoid removal without reserving tags
+- Prefer adding new optional fields
+
+Decision Quick Guide:
+Need rich evolution & registry? → Avro
+Need minimal bytes + service RPC? → Protobuf
+Need ad-hoc debugging / human logs? → JSON
+Need simple ingest only? → CSV (temporary)
+
+--------------------------------------------------
+KEY TAKEAWAYS
+--------------------------------------------------
+- StreamingQuery API: control & observability hinge on lastProgress/stateOperators.
+- awaitTermination optional only if another keeper mechanism exists.
+- Schema Registry centralizes compatibility enforcement; producers must pre-flight.
+- Avro excels at evolution due to name-based resolution & defaults; Protobuf emphasizes performance but stricter evolution constraints.
+- Confluent wire format = magic byte + schema id; reading rarely needs subject; writing should force subject.
+- ABRiS reduces boilerplate and improves version targeting.
+- Plain text vs structured format difference is embedded structural markers, not transport mechanics.
+- Serialization = structure encoding; all becomes bytes, but only formats with agreed semantics ensure unambiguous reconstruction.
+- Choose formats by evolution complexity, performance needs, and ecosystem integration, not by “binary vs text” alone.
+
+END OF SUMMARY

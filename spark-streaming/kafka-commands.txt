@@ -1,0 +1,88 @@
+#Window, watermark
+
+# Create the input topic
+./kafka-topics.sh --create \
+  --topic test-user-events \
+  --bootstrap-server "b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092" \
+  --partitions 3 \
+  --replication-factor 2
+
+# Verify the topic was created
+./kafka-topics.sh \
+--bootstrap-server "b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092" \
+--describe \
+--topic test-user-events
+
+# Create the output topic
+./kafka-topics.sh --create \
+  --topic test-processed-user-events \
+  --bootstrap-server "b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092" \
+  --partitions 3 \
+  --replication-factor 2
+
+# Verify the topic was created
+./kafka-topics.sh \
+--bootstrap-server "b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092" \
+--describe \
+--topic test-processed-user-events
+
+
+# Create a file with sample events
+cat > ~/roshan/sample_events.json << 'EOF'
+{"user_id": "user_123", "event_type": "page_view", "timestamp": "2025-08-22T17:23:54.000Z", "page_url": "https://example.com/home", "session_id": "sess_abc123", "ip_address": "192.168.1.100", "user_agent": "Mozilla/5.0", "country": "US", "device_type": "desktop"}
+{"user_id": "user_456", "event_type": "click", "timestamp": "2025-08-22T17:24:10.000Z", "page_url": "https://example.com/products", "session_id": "sess_def456", "ip_address": "192.168.1.101", "user_agent": "Mozilla/5.0", "country": "UK", "device_type": "mobile"}
+{"user_id": "user_789", "event_type": "login", "timestamp": "2025-08-22T17:24:25.000Z", "page_url": "https://example.com/login", "session_id": "sess_ghi789", "ip_address": "192.168.1.102", "user_agent": "Mozilla/5.0", "country": "CA", "device_type": "tablet"}
+{"user_id": "user_123", "event_type": "purchase", "timestamp": "2025-08-22T17:24:40.000Z", "page_url": "https://example.com/checkout", "session_id": "sess_abc123", "ip_address": "192.168.1.100", "user_agent": "Mozilla/5.0", "country": "US", "device_type": "desktop"}
+{"user_id": "user_234", "event_type": "add_to_cart", "timestamp": "2025-08-22T17:24:55.000Z", "page_url": "https://example.com/products/123", "session_id": "sess_jkl234", "ip_address": "192.168.1.103", "user_agent": "Mozilla/5.0", "country": "DE", "device_type": "mobile"}
+EOF
+
+cat > ~/roshan/sample_events_1.json << 'EOF'
+{"user_id": "user_1231", "event_type": "page_view", "timestamp": "2025-08-22T17:23:54.000Z", "page_url": "https://example.com/home", "session_id": "sess_abc123", "ip_address": "192.168.1.100", "user_agent": "Mozilla/5.0", "country": "US", "device_type": "desktop"}
+{"user_id": "user_4562", "event_type": "click", "timestamp": "2025-08-22T17:24:10.000Z", "page_url": "https://example.com/products", "session_id": "sess_def456", "ip_address": "192.168.1.101", "user_agent": "Mozilla/5.0", "country": "UK", "device_type": "mobile"}
+{"user_id": "user_7893", "event_type": "login", "timestamp": "2025-08-22T17:24:25.000Z", "page_url": "https://example.com/login", "session_id": "sess_ghi789", "ip_address": "192.168.1.102", "user_agent": "Mozilla/5.0", "country": "CA", "device_type": "tablet"}
+{"user_id": "user_1234", "event_type": "purchase", "timestamp": "2025-08-22T17:24:40.000Z", "page_url": "https://example.com/checkout", "session_id": "sess_abc123", "ip_address": "192.168.1.100", "user_agent": "Mozilla/5.0", "country": "US", "device_type": "desktop"}
+{"user_id": "user_2345", "event_type": "add_to_cart", "timestamp": "2025-08-22T17:24:55.000Z", "page_url": "https://example.com/products/123", "session_id": "sess_jkl234", "ip_address": "192.168.1.103", "user_agent": "Mozilla/5.0", "country": "DE", "device_type": "mobile"}
+EOF
+
+# Publish the sample events
+./kafka-console-producer.sh \
+  --topic test-user-events \
+  --bootstrap-server b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092 < ~/roshan/sample_events_1.json
+
+# Start a consumer to see the events
+./kafka-console-consumer.sh \
+  --topic test-user-events \
+  --bootstrap-server b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092 \
+  --from-beginning
+
+# Start a consumer to see the events
+./kafka-console-consumer.sh \
+  --topic test-processed-user-events \
+  --bootstrap-server b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092 \
+  --from-beginning
+
+
+
+##State Store-
+
+./kafka-topics.sh --create \
+  --topic test-input-state-store-topic-2 \
+  --bootstrap-server "b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092" \
+  --partitions 2 \
+  --replication-factor 2
+
+./kafka-console-producer.sh \
+  --topic test-input-state-store-topic-2 \
+  --bootstrap-server b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092
+
+
+./kafka-topics.sh --create \
+  --topic test-output-state-store-topic-2 \
+  --bootstrap-server "b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092" \
+  --partitions 2 \
+  --replication-factor 2
+
+./kafka-console-consumer.sh \
+  --topic test-output-state-store-topic-2 \
+  --bootstrap-server b-1.poweraimsk.2sbssu.c12.kafka.us-west-2.amazonaws.com:9092 \
+  --from-beginning
